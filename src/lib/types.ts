@@ -22,6 +22,10 @@ export type Article = {
   status: 'published' | 'pending' | 'rejected';
   quality_score: number | null;
   published_at: string;
+  published_precision?: 'exact' | 'date';
+  source_id?: string | null;
+  processed_at?: string | null;
+  process_state?: string;
   created_at: string;
   image_url: string | null;
   summary_basis: 'description' | 'excerpt' | 'manual';

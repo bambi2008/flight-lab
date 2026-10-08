@@ -1,0 +1,450 @@
+.aircraft-preview {
+  border-top: 1px solid var(--ink);
+  padding: 28px 0 42px;
+}
+.aircraft-intro,
+.aircraft-page-heading > p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.aircraft-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.75fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 42px;
+  border-bottom: 1px solid var(--line);
+  padding: 30px 0;
+}
+.aircraft-identity h2 {
+  font-family: 'Bodoni Moda', serif;
+  font-size: 48px;
+  line-height: 1.2;
+  margin-top: 8px;
+  letter-spacing: -1px;
+}
+.aircraft-identity h2 a:hover {
+  color: var(--accent);
+}
+.aircraft-identity > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.aircraft-date {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.aircraft-update h3 {
+  font-size: 24px;
+  margin: 10px 0;
+}
+.aircraft-update > p:not(.aircraft-date) {
+  font-size: 14px;
+  line-height: 1.9;
+  max-width: 680px;
+}
+.aircraft-citation {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  margin-top: 9px;
+  padding: 4px 0;
+}
+.aircraft-citation:hover {
+  color: var(--accent);
+}
+.aircraft-open {
+  justify-self: end;
+}
+.aircraft-snapshot-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  padding-top: 16px;
+}
+.aircraft-page {
+  padding: 55px 0 65px;
+}
+.aircraft-page-heading {
+  max-width: 880px;
+  padding-bottom: 40px;
+}
+.aircraft-page-heading h1 {
+  font-size: clamp(40px, 5vw, 64px);
+  margin: 14px 0 20px;
+}
+.aircraft-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 15px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.aircraft-dossier {
+  padding: 30px 0 70px;
+}
+.aircraft-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  padding: 9px 0;
+  color: var(--muted);
+}
+.dossier-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 2.5fr) minmax(200px, 1fr);
+  gap: 50px;
+  padding: 35px 0 40px;
+  align-items: end;
+}
+.dossier-heading h1 {
+  font-family: 'Bodoni Moda', serif;
+  font-size: clamp(60px, 8vw, 112px);
+  letter-spacing: -4px;
+  line-height: 1.1;
+  margin: 13px 0 22px;
+}
+.dossier-heading h2 {
+  font-size: clamp(25px, 2.6vw, 36px);
+  line-height: 1.5;
+}
+.dossier-heading > div > p {
+  line-height: 1.9;
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 730px;
+  margin-top: 17px;
+}
+.dossier-stamp {
+  border-left: 1px solid var(--line);
+  padding: 20px 0 0 24px;
+}
+.dossier-stamp > span {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+.dossier-stamp strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.7;
+  margin-top: 20px;
+}
+.dossier-stamp small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.dossier-nav {
+  display: flex;
+  gap: 34px;
+  padding: 16px 0;
+  border-block: 1px solid var(--ink);
+  font-size: 13px;
+  overflow-x: auto;
+}
+.dossier-nav a {
+  white-space: nowrap;
+  padding: 4px 0;
+}
+.dossier-nav a:hover {
+  color: var(--accent);
+}
+.dossier-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.5fr) minmax(230px, 1fr);
+  gap: 65px;
+}
+.dossier-content {
+  min-width: 0;
+}
+.dossier-section {
+  padding: 38px 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 22px;
+}
+.dossier-section h2 {
+  font-size: 30px;
+  margin: 14px 0 20px;
+  line-height: 1.5;
+}
+.dossier-section > p,
+.dossier-design-note > p,
+.aircraft-timeline p {
+  font-size: 14px;
+  line-height: 1.95;
+}
+.dossier-event-date {
+  font-size: 11px !important;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.dossier-event-date span {
+  display: inline-block;
+  margin-left: 18px;
+}
+.spec-table-wrap {
+  overflow-x: auto;
+  margin-top: 25px;
+}
+.aircraft-spec-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.aircraft-spec-table th,
+.aircraft-spec-table td {
+  padding: 17px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+.aircraft-spec-table thead th {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  border-top: 1px solid var(--line);
+}
+.aircraft-spec-table th:first-child {
+  padding-left: 0;
+  width: 23%;
+}
+.aircraft-spec-table tbody th {
+  font-weight: 400;
+}
+.aircraft-spec-table td:nth-child(2) {
+  width: 28%;
+  font-size: 17px;
+}
+.aircraft-spec-table td:last-child {
+  padding-right: 0;
+}
+.aircraft-spec-table td p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.evidence-label {
+  display: block;
+  color: #a41520;
+  font-size: 10px;
+  margin-top: 7px;
+}
+.evidence-unknown {
+  color: var(--muted);
+}
+.dossier-design-note + .dossier-design-note {
+  margin-top: 26px;
+}
+.dossier-design-note h3 {
+  font-size: 21px;
+  line-height: 1.5;
+  margin-bottom: 9px;
+}
+.dossier-research {
+  padding: 39px 0 0;
+}
+.dossier-research h2 {
+  font-size: 27px;
+  line-height: 1.5;
+  margin: 14px 0 18px;
+}
+.research-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.research-question {
+  border-top: 1px solid var(--line);
+  padding: 20px 0;
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.7;
+}
+.research-question span {
+  display: block;
+  font-family: 'Bodoni Moda', serif;
+  font-size: 28px;
+  color: #a41520;
+  margin-bottom: 8px;
+}
+.research-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.9;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.aircraft-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.aircraft-timeline li {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+.aircraft-timeline li > span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.aircraft-timeline h3 {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.aircraft-source-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.aircraft-source-list li {
+  border-top: 1px solid var(--line);
+  padding: 19px 0;
+}
+.aircraft-source-list span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.aircraft-source-list a {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.aircraft-source-list svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.aircraft-source-list a:hover {
+  color: var(--accent);
+}
+.aircraft-dossier > .editorial-link {
+  margin-top: 35px;
+}
+@media (max-width: 1100px) {
+  .aircraft-row {
+    gap: 25px;
+    grid-template-columns: 170px minmax(0, 1fr) auto;
+  }
+  .aircraft-identity h2 {
+    font-size: 41px;
+  }
+  .aircraft-update h3 {
+    font-size: 22px;
+  }
+  .dossier-layout {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr) 230px;
+  }
+  .dossier-heading {
+    gap: 30px;
+  }
+}
+@media (max-width: 700px) {
+  .aircraft-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 25px 0;
+  }
+  .aircraft-identity h2 {
+    font-size: 46px;
+  }
+  .aircraft-open {
+    justify-self: start;
+  }
+  .aircraft-update h3 {
+    font-size: 23px;
+  }
+  .aircraft-preview .section-title {
+    gap: 12px;
+  }
+  .aircraft-preview .section-title .editorial-link {
+    font-size: 12px;
+  }
+  .aircraft-intro {
+    font-size: 13px;
+  }
+  .aircraft-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .aircraft-page {
+    padding-top: 34px;
+  }
+  .aircraft-page-heading > p {
+    font-size: 14px;
+  }
+  .aircraft-page-heading {
+    padding-bottom: 24px;
+  }
+  .dossier-heading,
+  .dossier-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+  .dossier-heading {
+    padding: 25px 0 28px;
+  }
+  .dossier-heading h1 {
+    letter-spacing: -2px;
+  }
+  .dossier-heading > div > p {
+    font-size: 14px;
+  }
+  .dossier-stamp {
+    padding: 15px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .dossier-stamp strong {
+    margin-top: 10px;
+  }
+  .dossier-nav {
+    gap: 22px;
+    font-size: 12px;
+  }
+  .dossier-section h2 {
+    font-size: 26px;
+  }
+  .dossier-event-date span {
+    display: block;
+    margin-left: 0;
+  }
+  .aircraft-spec-table {
+    min-width: 325px;
+  }
+  .aircraft-spec-table th,
+  .aircraft-spec-table td {
+    padding-inline: 8px;
+  }
+  .aircraft-spec-table td:nth-child(2) {
+    font-size: 15px;
+  }
+  .aircraft-timeline li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .dossier-research {
+    padding-top: 0;
+    padding-bottom: 20px;
+  }
+}

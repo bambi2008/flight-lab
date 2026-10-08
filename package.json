@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "local": "vite --host 127.0.0.1 --port 5173 --strictPort --mode local-dev",
+    "local:api": "node scripts/local/server.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "ingest": "node --env-file-if-exists=.env.local scripts/ingest.mjs",
     "source-check": "node scripts/source-check.mjs",
     "supabase": "supabase"

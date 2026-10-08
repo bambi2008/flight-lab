@@ -13,9 +13,10 @@ import {
   Edit3,
   X,
 } from 'lucide-react';
-import { db, demoMode, getAdminData } from '../lib/db';
+import { db, demoMode, localMode, getAdminData } from '../lib/db';
 import { categories, type Article, type Source } from '../lib/types';
 import { safeLink } from './ArticleCard';
+import { publicationLatency } from '../lib/latency';
 
 type Draft = {
   title: string;
@@ -37,6 +38,12 @@ const emptyDraft: Draft = {
   source_name: '哔哩哔哩',
   tags: '',
 };
+const runStatus: Record<string, string> = {
+  running: '正在采集',
+  complete: '已完成',
+  awaiting_key: '等待模型密钥',
+  failed: '未完成',
+};
 
 export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> }) {
   const [authorized, setAuthorized] = useState(false);
@@ -48,6 +55,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
   const [articles, setArticles] = useState<Article[]>([]),
     [sources, setSources] = useState<Source[]>([]),
     [runs, setRuns] = useState<Record<string, unknown>[]>([]);
+  const [weekly, setWeekly] = useState({ processed: 0, estimated_usd: 0, runs: 0 });
   const [tab, setTab] = useState('pending'),
     [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false),
@@ -96,6 +104,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
       setArticles(data.articles);
       setSources(data.sources);
       setRuns(data.runs);
+      setWeekly(data.weekly);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -145,8 +154,8 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     if (authorized) void reload();
   }, [authorized, reload]);
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
+  async function login(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!db) return;
     setBusy(true);
     setError('');
@@ -315,6 +324,13 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
               查看后台预览 <ArrowUpRight size={16} />
             </button>
           </>
+        ) : localMode ? (
+          <>
+            <div className="demo-notice">本地试运行 · 仅本机可用，修改会保存。</div>
+            <button className="primary" disabled={busy} onClick={() => login()}>
+              {busy ? '正在进入…' : '进入本地编辑台'} <ArrowUpRight size={16} />
+            </button>
+          </>
         ) : (
           <form onSubmit={login}>
             <label>
@@ -352,10 +368,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
   const visible = articles.filter((a) =>
     tab === 'featured' ? a.featured && a.status === 'published' : a.status === tab,
   );
-  const totalRuns = runs.filter(
-    (r) => Date.parse(String(r.started_at)) > Date.now() - 7 * 86400000,
-  );
-  const totalCost = totalRuns.reduce((n, r) => n + Number(r.estimated_usd ?? 0), 0);
+  const latency = publicationLatency(articles);
   return (
     <section className="admin-page">
       <div className="admin-heading">
@@ -393,6 +406,11 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
         </div>
       </div>
       {demoMode && <div className="demo-notice">后台预览 · 这里的操作不会保存，采集尚未启用。</div>}
+      {localMode && (
+        <div className="demo-notice">
+          本地试运行 · 修改会保存。服务运行期间每 10 分钟检查来源；未配置模型时只收录待处理内容。
+        </div>
+      )}
       {error && (
         <div className="error" role="alert">
           {error}
@@ -415,16 +433,24 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
         <div>
           <span>近 7 天处理</span>
           <strong>
-            {totalRuns.reduce((n, r) => n + Number(r.processed ?? 0), 0)}
+            {weekly.processed}
             <small> 条</small>
           </strong>
         </div>
         <div>
           <span>近 7 天模型估算费用</span>
-          <strong>${totalCost.toFixed(4)}</strong>
+          <strong>${Number(weekly.estimated_usd).toFixed(4)}</strong>
           <small>实际账单以模型平台为准</small>
         </div>
       </div>
+      <p className="source-note">
+        发布延迟（来源发布时间至处理完成）：
+        {latency.count
+          ? `P50 ${latency.p50!.toFixed(1)} 分钟 / P95 ${latency.p95!.toFixed(1)} 分钟`
+          : '尚无可测量的自动发布样本'}
+        。 样本 {latency.count} 条，来自当前加载内容中近 72
+        小时发布的自动资讯；仅有日期的来源与人工收录不计入。
+      </p>
       <div className="admin-tabs">
         {[
           ['pending', '待审核', Eye],
@@ -450,7 +476,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
       {tab === 'sources' ? (
         <div className="source-list">
           <div className="source-note">
-            YouTube 填频道 ID；RSS 目前支持 NASA 官方订阅；GitHub 填
+            YouTube 填频道 ID；RSS 支持 NASA、Airbus 与 Boeing 已验证的官方域名；GitHub 填
             topic。哔哩哔哩视频通过“添加链接”收录。
           </div>
           <button className="secondary" onClick={() => setShowSourceForm(true)}>
@@ -463,6 +489,20 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                 <strong>{s.name}</strong>
                 <p>
                   {s.kind} · {s.locator}
+                </p>
+                <p>
+                  检查频率：
+                  {s.kind === 'rss'
+                    ? '10 分钟'
+                    : s.kind === 'youtube'
+                      ? '30 分钟'
+                      : s.kind === 'github'
+                        ? '6 小时'
+                        : '手动'}{' '}
+                  · 最近检查：
+                  {s.last_fetched_at
+                    ? new Date(s.last_fetched_at).toLocaleString('zh-CN')
+                    : '尚未运行'}
                 </p>
                 {s.last_error && <span className="error">{s.last_error}</span>}
               </div>
@@ -484,8 +524,8 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                 <div>
                   <strong>{new Date(String(r.started_at)).toLocaleString('zh-CN')}</strong>
                   <p>
-                    {String(r.status)} · 抓取 {String(r.fetched)} · 发布 {String(r.published)} ·
-                    待审 {String(r.pending)} · 失败 {String(r.failed)}
+                    {runStatus[String(r.status)] ?? String(r.status)} · 抓取 {String(r.fetched)} ·
+                    发布 {String(r.published)} · 待审 {String(r.pending)} · 失败 {String(r.failed)}
                   </p>
                   {!!r.error && <p className="error">{String(r.error)}</p>}
                 </div>

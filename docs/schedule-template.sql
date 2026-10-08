@@ -5,8 +5,9 @@
 select vault.create_secret('REPLACE_WITH_RANDOM_CRON_SECRET', 'flight_lab_cron_secret');
 select vault.create_secret('https://REPLACE_PROJECT_REF.supabase.co/functions/v1/ingest', 'flight_lab_ingest_url');
 
--- Three runs a day: 09:00, 17:00, 01:00 Asia/Shanghai. pg_cron uses UTC.
-select cron.schedule('flight-lab-ingest', '0 1,9,17 * * *', $$
+-- Every 10 minutes. Source polling separately throttles YouTube and GitHub.
+-- Enable only after manually verifying ingestion and configuring the model key.
+select cron.schedule('flight-lab-ingest', '*/10 * * * *', $$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name='flight_lab_ingest_url'),
     headers := jsonb_build_object(

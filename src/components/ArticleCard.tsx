@@ -3,14 +3,6 @@ import type { Article } from '../lib/types';
 
 const icons = { video: Play, project: Code2, article: FileText };
 const kindNames = { video: '视频', project: '项目', article: '阅读' };
-const patternNames: Record<string, string> = {
-  空气动力学: 'FLOW / 气流',
-  飞机设计: 'DESIGN / 构型',
-  实验飞行器: 'EXPERIMENT / 探索',
-  模拟与游戏: 'SIMULATION / 模拟',
-  开源工具: 'OPEN SOURCE / 开源',
-};
-
 export function safeLink(value: string): string | null {
   try {
     const u = new URL(value);
@@ -35,7 +27,7 @@ export default function ArticleCard({
       : null;
   return (
     <article className={`article-card ${compact ? 'compact' : ''}`}>
-      {!compact && (
+      {!compact && image && (
         <a
           className={`card-art art-${article.category}`}
           href={href ?? undefined}
@@ -44,28 +36,14 @@ export default function ArticleCard({
           tabIndex={-1}
           aria-hidden="true"
         >
-          {image ? (
-            <img
-              src={image}
-              alt=""
-              loading="lazy"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <svg viewBox="0 0 440 225">
-              <g fill="none" stroke="currentColor" strokeWidth="1.4">
-                <path d="M80 123 197 78 345 126 221 145Z" />
-                <path d="M197 78 221 145 214 184M221 145 135 172 80 123M135 172 214 184 345 126" />
-                <path d="m198 105-23 33 68 10 21-27z" />
-                <path d="M32 166 105 138m230-49 58-23M33 71h51M362 172h51" strokeDasharray="4 5" />
-                <circle cx="221" cy="145" r="66" strokeOpacity=".2" />
-                <circle cx="221" cy="145" r="89" strokeOpacity=".12" />
-              </g>
-            </svg>
-          )}
-          <span className="art-caption">{patternNames[article.category]}</span>
+          <img
+            src={image}
+            alt=""
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <span className="kind-pill">
             <Icon size={12} />
             {kindNames[article.kind]}

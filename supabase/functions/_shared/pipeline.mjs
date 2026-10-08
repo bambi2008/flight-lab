@@ -1,6 +1,8 @@
 import { simhash, nearDuplicate, publicationStatus } from './content.mjs';
 import { fetchSource } from './sources.mjs';
 import { analyze } from './deepseek.mjs';
+import { dueSources } from './polling.mjs';
+import { enrichExcerpt } from './excerpt.mjs';
 
 function must(result) {
   if (result.error) throw new Error(result.error.message);
@@ -41,10 +43,30 @@ export async function ingest({ db, parser, config }) {
         .gte('created_at', new Date(Date.now() - 90 * 86400000).toISOString())
         .limit(3000),
     );
-    for (const source of sources) {
-      if (Date.now() > deadline - 40_000) break;
+    const due = dueSources(sources).slice(0, 12);
+    const fetched = [];
+    for (let start = 0; start < due.length; start += 3) {
+      if (Date.now() > deadline - 52_000) break;
+      fetched.push(
+        ...(await Promise.all(
+          due.slice(start, start + 3).map(async (source) => {
+            try {
+              return {
+                source,
+                items: await fetchSource(source, { parser, githubToken: config.githubToken }),
+              };
+            } catch (error) {
+              return { source, error };
+            }
+          }),
+        )),
+      );
+    }
+    for (const result of fetched) {
+      const { source } = result;
       try {
-        const items = await fetchSource(source, { parser, githubToken: config.githubToken });
+        if (result.error) throw result.error;
+        const items = result.items;
         for (const item of items.slice(0, 20)) {
           stats.fetched++;
           const fingerprint = simhash(item.original_title);
@@ -89,7 +111,10 @@ export async function ingest({ db, parser, config }) {
         must(
           await db
             .from('sources')
-            .update({ last_error: String(error.message).slice(0, 300) })
+            .update({
+              last_fetched_at: new Date().toISOString(),
+              last_error: String(error.message).slice(0, 300),
+            })
             .eq('id', source.id),
         );
       }
@@ -102,12 +127,16 @@ export async function ingest({ db, parser, config }) {
           .select('*')
           .in('process_state', ['queued', 'failed'])
           .lt('process_attempts', 3)
+          .or(
+            `process_state.eq.queued,last_attempt_at.is.null,last_attempt_at.lt.${new Date(Date.now() - 6 * 3600000).toISOString()}`,
+          )
+          .order('published_at', { ascending: false })
           .order('created_at')
           .limit(batch),
       );
       let monthCost = config.monthlyLimit ? Number(must(await db.rpc('monthly_ai_estimate'))) : 0;
       for (const item of queue) {
-        if (Date.now() > deadline - 38_000) break;
+        if (Date.now() > deadline - 44_000) break;
         // This is an optional estimated spend stop, not a billing-provider hard limit.
         if (config.monthlyLimit && monthCost >= config.monthlyLimit) break;
         const input = must(
@@ -134,20 +163,29 @@ export async function ingest({ db, parser, config }) {
             .eq('id', item.id),
         );
         try {
-          const analysis = await analyze(
-            { ...item, raw_text: input.raw_text },
-            config,
-            async (usage) => {
+          // Enrich only deduplicated queued items, so polling never re-downloads every article.
+          let rawText = input.raw_text;
+          if (item.kind === 'article' && rawText.length < 250) {
+            rawText = await enrichExcerpt({ ...item, raw_text: rawText });
+            if (rawText !== input.raw_text)
               must(
-                await db.from('ai_usage').insert({ ...usage, article_id: item.id, run_id: runId }),
+                await db
+                  .from('article_inputs')
+                  .update({ raw_text: rawText })
+                  .eq('article_id', item.id),
               );
-              stats.prompt_tokens += usage.prompt_tokens;
-              stats.completion_tokens += usage.completion_tokens;
-              stats.estimated_usd += usage.estimated_usd;
-              monthCost += usage.estimated_usd;
-            },
-          );
-          const status = publicationStatus(analysis, input.raw_text.length);
+          }
+          if (rawText.length < 80) throw new Error('官方来源正文不足，保留待审，不调用模型');
+          const analysis = await analyze({ ...item, raw_text: rawText }, config, async (usage) => {
+            must(
+              await db.from('ai_usage').insert({ ...usage, article_id: item.id, run_id: runId }),
+            );
+            stats.prompt_tokens += usage.prompt_tokens;
+            stats.completion_tokens += usage.completion_tokens;
+            stats.estimated_usd += usage.estimated_usd;
+            monthCost += usage.estimated_usd;
+          });
+          const status = publicationStatus(analysis, rawText.length);
           const { relevance, confidence, moderation, ...fields } = analysis;
           // An editor may change state while this task runs. Never overwrite their decision.
           const updated = must(

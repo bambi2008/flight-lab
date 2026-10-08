@@ -3,6 +3,22 @@ import { fetchSource } from '../supabase/functions/_shared/sources.mjs';
 const sources = [
   { name: 'Real Engineering', kind: 'youtube', locator: 'UCR1IuLEqb6UEA_zQ81kwXfg' },
   { name: 'NASA Aeronautics', kind: 'rss', locator: 'https://www.nasa.gov/aeronautics/feed/' },
+  {
+    name: 'Airbus Civil',
+    kind: 'rss',
+    locator: 'https://www.airbus.com/en/generate-rss-feeds?tid=15571&fid=29711',
+  },
+  {
+    name: 'Airbus Defence',
+    kind: 'rss',
+    locator: 'https://www.airbus.com/en/generate-rss-feeds?tid=15576&fid=29721',
+  },
+  {
+    name: 'Airbus Innovation',
+    kind: 'rss',
+    locator: 'https://www.airbus.com/en/generate-rss-feeds?tid=15591&fid=29736',
+  },
+  { name: 'Boeing', kind: 'rss', locator: 'https://investors.boeing.com/rss/pressrelease.aspx' },
   { name: 'GitHub Aerodynamics', kind: 'github', locator: 'aerodynamics' },
 ];
 let failed = false;

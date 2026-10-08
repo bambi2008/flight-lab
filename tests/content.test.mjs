@@ -99,7 +99,7 @@ test('a single-item RSS feed parses and strips markup safely', async () => {
     {
       parser: new XMLParser({ ignoreAttributes: false }),
       fetcher: async (_url, options) => {
-        assert.equal(options.redirect, 'error');
+        assert.equal(options.redirect, 'manual');
         return new Response(xml);
       },
     },

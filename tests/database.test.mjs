@@ -15,6 +15,15 @@ test('PostgreSQL schema enforces public read-only access, admin authorization, p
         'utf8',
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL(
+          '../supabase/migrations/20261008154945_source_timestamp_precision.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
     await db.exec(await readFile(new URL('../supabase/seed.sql', import.meta.url), 'utf8'));
     const admin = '00000000-0000-4000-8000-000000000001',
       visitor = '00000000-0000-4000-8000-000000000002';
@@ -30,8 +39,13 @@ test('PostgreSQL schema enforces public read-only access, admin authorization, p
     await assert.rejects(db.query('select * from sources'), /permission denied/);
     await assert.rejects(db.query('update articles set featured=true'), /permission denied/);
     await assert.rejects(db.query('select acquire_ingest_lease($1)', [admin]), /permission denied/);
+    await assert.rejects(db.query('select weekly_ingest_summary()'), /permission denied/);
     await db.exec('reset role;set role authenticated');
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [visitor]);
+    assert.equal(
+      (await db.query('select weekly_ingest_summary() as result')).rows[0].result.runs,
+      0,
+    );
     assert.equal((await db.query('select id from articles')).rows.length, 1);
     assert.equal((await db.query('update articles set featured=true returning id')).rows.length, 0);
     await assert.rejects(
@@ -54,6 +68,25 @@ test('PostgreSQL schema enforces public read-only access, admin authorization, p
         "insert into articles(source_name,original_url,original_title,title,kind,status) values('NASA','https://www.nasa.gov/empty','t','t','article','published')",
       ),
       /check constraint/,
+    );
+    await db.exec('reset role;set role service_role');
+    await db.query('insert into ingest_runs(processed,estimated_usd) values(5,0.25)');
+    await db.query(
+      "insert into ingest_runs(started_at,processed,estimated_usd) values(now()-interval '8 days',99,99)",
+    );
+    const weekly = (await db.query('select weekly_ingest_summary() as result')).rows[0].result;
+    assert.equal(weekly.processed, 5);
+    assert.equal(weekly.estimated_usd, 0.25);
+    await db.exec('reset role;set role authenticated');
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [visitor]);
+    assert.equal(
+      (await db.query('select weekly_ingest_summary() as result')).rows[0].result.processed,
+      0,
+    );
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [admin]);
+    assert.equal(
+      (await db.query('select weekly_ingest_summary() as result')).rows[0].result.processed,
+      5,
     );
     await db.exec('reset role;set role service_role');
     assert.equal(
@@ -81,6 +114,7 @@ test('PostgreSQL schema enforces public read-only access, admin authorization, p
       kind: 'video',
       published_at: new Date().toISOString(),
       summary_basis: 'description',
+      published_precision: 'date',
     };
     await assert.rejects(
       db.query('select enqueue_article($1,$2)', [payload, 'x'.repeat(6001)]),
@@ -98,6 +132,11 @@ test('PostgreSQL schema enforces public read-only access, admin authorization, p
       ])
     ).rows[0].id;
     assert(enqueued);
+    assert.equal(
+      (await db.query('select published_precision from articles where id=$1', [enqueued])).rows[0]
+        .published_precision,
+      'date',
+    );
     assert.equal(
       (await db.query('select raw_text from article_inputs where article_id=$1', [enqueued]))
         .rows[0].raw_text,

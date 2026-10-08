@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Article, Source } from './types';
+import { createLocalClient } from './local-client';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-export const db = url && key ? createClient(url, key) : null;
+export const localMode = import.meta.env.VITE_LOCAL_API === 'true';
+export const db = localMode ? createLocalClient() : url && key ? createClient(url, key) : null;
 export const demoMode = !db;
 
 // Keep raw source payloads and moderation notes out of the public UI.
 const publicFields =
-  'id,title,original_title,summary,why_it_matters,category,tags,source_name,original_url,kind,featured,status,quality_score,published_at,created_at,image_url,summary_basis';
+  'id,title,original_title,summary,why_it_matters,category,tags,source_name,original_url,kind,featured,status,quality_score,published_at,published_precision,created_at,image_url,summary_basis';
 
 export async function getArticles(): Promise<Article[]> {
   if (!db) {
@@ -32,8 +34,15 @@ export async function getAdminData(): Promise<{
   articles: Article[];
   sources: Source[];
   runs: Record<string, unknown>[];
+  weekly: { processed: number; estimated_usd: number; runs: number };
 }> {
-  if (!db) return { articles: (await import('./seed')).seedArticles, sources: [], runs: [] };
+  if (!db)
+    return {
+      articles: (await import('./seed')).seedArticles,
+      sources: [],
+      runs: [],
+      weekly: { processed: 0, estimated_usd: 0, runs: 0 },
+    };
   const result = await Promise.all([
     db.from('articles').select('*').order('created_at', { ascending: false }).limit(300),
     db.from('sources').select('*').order('created_at'),
@@ -42,12 +51,14 @@ export async function getAdminData(): Promise<{
       .select('*')
       .gte('started_at', new Date(Date.now() - 7 * 86400000).toISOString())
       .order('started_at', { ascending: false })
-      .limit(300),
+      .limit(2000),
+    db.rpc('weekly_ingest_summary'),
   ]);
   if (result.some((r) => r.error)) throw new Error('后台数据加载失败，请检查管理员权限。');
   return {
     articles: result[0].data as Article[],
     sources: result[1].data as Source[],
     runs: result[2].data ?? [],
+    weekly: result[3].data,
   };
 }

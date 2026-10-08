@@ -9,4 +9,5 @@ supabase/.branches/
 .DS_Store
 *.log
 work/
+.local-data/
 *.tsbuildinfo

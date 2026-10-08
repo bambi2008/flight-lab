@@ -1,34 +1,41 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ArrowDown,
-  ArrowUpRight,
-  Search,
-  Plane,
-  SlidersHorizontal,
-  X,
-  Menu,
-  RefreshCw,
-} from 'lucide-react';
-import { demoMode, getArticles } from './lib/db';
+import { ArrowUpRight, Search, Plane, SlidersHorizontal, X, Menu, RefreshCw } from 'lucide-react';
+import { demoMode, localMode, getArticles } from './lib/db';
 import { categories, type Article, type Category } from './lib/types';
 import ArticleCard from './components/ArticleCard';
-import WingLab from './components/WingLab';
+import EditorialCover from './components/EditorialCover';
 import Admin from './components/Admin';
+import { AircraftDossier, AircraftPreview, AircraftTracker } from './components/AircraftTracker';
 
-type Page = 'home' | 'topics' | 'about' | 'admin';
+type Page = 'home' | 'topics' | 'about' | 'admin' | 'aircraft' | 'aircraft-detail';
 const initialPage = (): Page =>
-  (({ '/categories': 'topics', '/about': 'about', '/admin': 'admin' })[
-    location.pathname
-  ] as Page) ?? 'home';
-const paths = { home: '/', topics: '/categories', about: '/about', admin: '/admin' };
+  location.pathname.startsWith('/aircraft/')
+    ? 'aircraft-detail'
+    : (({ '/categories': 'topics', '/about': 'about', '/admin': 'admin' }[
+        location.pathname
+      ] as Page) ?? (location.pathname === '/aircraft' ? 'aircraft' : 'home'));
+const initialAircraft = () => location.pathname.split('/')[2] ?? '';
+const paths: Record<Page, string> = {
+  home: '/',
+  topics: '/categories',
+  about: '/about',
+  admin: '/admin',
+  aircraft: '/aircraft',
+  'aircraft-detail': '/aircraft',
+};
 
 export default function App() {
   const [page, setPage] = useState<Page>(initialPage);
+  const [aircraftId, setAircraftId] = useState(initialAircraft);
   const [menu, setMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [category, setCategory] = useState<Category>('全部');
+  const [category, setCategory] = useState<Category>(() => {
+    const value = new URLSearchParams(location.search).get('topic');
+    return categories.includes(value as Category) ? (value as Category) : '全部';
+  });
   const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('latest');
@@ -47,14 +54,26 @@ export default function App() {
     void reload();
   }, [reload]);
   useEffect(() => {
-    const fn = () => setPage(initialPage());
+    const fn = () => {
+      setPage(initialPage());
+      setAircraftId(initialAircraft());
+      const value = new URLSearchParams(location.search).get('topic');
+      setCategory(categories.includes(value as Category) ? (value as Category) : '全部');
+      setMenu(false);
+      setSearchOpen(false);
+    };
     window.addEventListener('popstate', fn);
     return () => window.removeEventListener('popstate', fn);
   }, []);
-  function navigate(next: Page) {
-    history.pushState({}, '', paths[next]);
+  function navigate(next: Page, topic?: Category, id?: string) {
+    const url =
+      paths[next] +
+      (next === 'aircraft-detail' && id ? '/' + encodeURIComponent(id) : '') +
+      (next === 'topics' && topic && topic !== '全部' ? '?topic=' + encodeURIComponent(topic) : '');
+    history.pushState({}, '', url);
     setPage(next);
     setMenu(false);
+    setSearchOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   const filtered = useMemo(
@@ -75,64 +94,212 @@ export default function App() {
         ),
     [articles, category, kind, query, sort],
   );
-  const picks = articles.filter((a) => a.featured).slice(0, 3);
+  const showCover = page === 'home' && !query && category === '全部' && kind === 'all';
+  const openTopic = (topic: Category) => {
+    setCategory(topic);
+    setKind('all');
+    setQuery('');
+    navigate('topics', topic);
+  };
+  const showSearch = () => {
+    if (page !== 'home' && page !== 'topics') navigate('home');
+    setSearchOpen(true);
+    setMenu(false);
+  };
+  const openAircraft = (id: string) => {
+    setAircraftId(id);
+    navigate('aircraft-detail', undefined, id);
+  };
+  useEffect(() => {
+    if (searchOpen) document.getElementById('header-search-input')?.focus();
+  }, [searchOpen, page]);
+  useEffect(() => {
+    if (!menu && !searchOpen) return;
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setMenu(false);
+      setSearchOpen(false);
+      document
+        .querySelector<HTMLButtonElement>(searchOpen ? '.search-button' : '.menu-button')
+        ?.focus();
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [menu, searchOpen]);
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        跳到内容
+      </a>
       <header className="site-header">
-        <div className="header-inner">
+        <div className="masthead">
+          <button
+            className="menu-button"
+            aria-label={menu ? '关闭菜单' : '打开菜单'}
+            aria-expanded={menu}
+            aria-controls="site-menu"
+            onClick={() => {
+              setMenu(!menu);
+              setSearchOpen(false);
+            }}
+          >
+            {menu ? <X size={27} strokeWidth={1.5} /> : <Menu size={27} strokeWidth={1.5} />}
+          </button>
           <a
             href="/"
+            className="brand"
             onClick={(e) => {
               e.preventDefault();
+              setCategory('全部');
+              setQuery('');
+              setKind('all');
+              setSearchOpen(false);
               navigate('home');
             }}
-            className="brand"
           >
-            <span className="brand-icon">
-              <Plane size={22} />
-            </span>
-            <span>
-              飞行实验室<small>FLIGHT LAB</small>
-            </span>
-            <span className="beta">BETA</span>
+            <span>FLIGHT LAB</span>
+            <small>飞行实验室</small>
           </a>
-          <nav className={menu ? 'open' : ''} aria-label="主导航">
+          <div className="masthead-right">
+            <span>好奇，让飞行更近一点</span>
+            <button
+              className="search-button"
+              aria-label={searchOpen ? '关闭搜索' : '打开搜索'}
+              aria-expanded={searchOpen}
+              onClick={() => (searchOpen ? setSearchOpen(false) : showSearch())}
+            >
+              {searchOpen ? (
+                <X size={26} strokeWidth={1.5} />
+              ) : (
+                <Search size={27} strokeWidth={1.5} />
+              )}
+            </button>
+          </div>
+        </div>
+        <nav className="editorial-nav" aria-label="内容分类">
+          <a
+            href="/"
+            aria-current={page === 'home' && category === '全部' ? 'page' : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              setCategory('全部');
+              setQuery('');
+              setKind('all');
+              navigate('home');
+            }}
+          >
+            精选
+          </a>
+          <a
+            href="/aircraft"
+            aria-current={page === 'aircraft' || page === 'aircraft-detail' ? 'page' : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('aircraft');
+            }}
+          >
+            新机追踪
+          </a>
+          {(['飞机设计', '空气动力学', '实验飞行器', '模拟与游戏', '开源工具'] as Category[]).map(
+            (topic) => (
+              <a
+                key={topic}
+                href={`/categories?topic=${encodeURIComponent(topic)}`}
+                aria-current={page === 'topics' && category === topic ? 'page' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  openTopic(topic);
+                }}
+              >
+                {topic}
+              </a>
+            ),
+          )}
+        </nav>
+        {menu && (
+          <nav
+            id="site-menu"
+            className="site-menu"
+            aria-label="主导航"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setMenu(false);
+                document.querySelector<HTMLButtonElement>('.menu-button')?.focus();
+              }
+            }}
+          >
             {(
               [
-                ['home', '发现'],
-                ['topics', '探索主题'],
-                ['about', '关于这里'],
+                ['home', '首页精选'],
+                ['aircraft', '新机追踪 · 技术档案'],
+                ['topics', '探索全部'],
+                ['about', '关于飞行实验室'],
               ] as [Page, string][]
             ).map(([p, label]) => (
               <a
                 key={p}
                 href={paths[p]}
-                aria-current={page === p ? 'page' : undefined}
                 onClick={(e) => {
                   e.preventDefault();
+                  if (p === 'topics') {
+                    setCategory('全部');
+                    setQuery('');
+                  }
                   navigate(p);
                 }}
               >
                 {label}
+                <ArrowUpRight size={18} />
               </a>
             ))}
           </nav>
-          <button
-            className="mobile-menu"
-            aria-label={menu ? '关闭菜单' : '打开菜单'}
-            onClick={() => setMenu(!menu)}
+        )}
+        {searchOpen && (
+          <div
+            className="header-search"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearchOpen(false);
+                document.querySelector<HTMLButtonElement>('.search-button')?.focus();
+              }
+            }}
           >
-            {menu ? <X size={21} /> : <Menu size={21} />}
-          </button>
-          <span className="header-note">
-            给每一个想弄懂飞行的人 <ArrowUpRight size={14} />
-          </span>
-        </div>
+            <label htmlFor="header-search-input">从一个问题开始</label>
+            <div>
+              <Search size={20} />
+              <input
+                id="header-search-input"
+                type="search"
+                placeholder="搜索飞机、气流、项目…"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setCategory('全部');
+                  setKind('all');
+                }}
+              />
+              <button
+                className="editorial-link"
+                onClick={() => {
+                  setSearchOpen(false);
+                  document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                查看结果
+                <ArrowUpRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
-      <main>
+      <main id="main-content">
         {page === 'admin' ? (
           <Admin onUpdated={reload} />
+        ) : page === 'aircraft' ? (
+          <AircraftTracker onOpen={openAircraft} />
+        ) : page === 'aircraft-detail' ? (
+          <AircraftDossier id={aircraftId} onBack={() => navigate('aircraft')} />
         ) : page === 'about' ? (
           <section className="about-page">
             <span className="eyebrow">A SHARED CURIOSITY</span>
@@ -148,7 +315,7 @@ export default function App() {
               <div>
                 <h2>我们关注什么</h2>
                 <p>
-                  机翼、结构、构型、实验飞行器，还有把想法变成作品的开源工具。发现值得看的视频，也发现值得动手研究的项目。
+                  机翼、结构、构型、实验飞行器，还有把想法变成作品的开源工具。新机追踪覆盖民用、军用与实验机型，按公开来源记录技术参数与研制进展。
                 </p>
               </div>
               <div>
@@ -186,74 +353,30 @@ export default function App() {
           </section>
         ) : (
           <>
-            {page === 'home' ? (
-              <section className="hero">
-                <div className="hero-copy">
-                  <span className="eyebrow">
-                    <span className="tiny-dot" /> THE WORLD IS A WIND TUNNEL
-                  </span>
-                  <h1>
-                    让好奇心，
-                    <br />
-                    飞得<span className="highlight">更远。</span>
-                  </h1>
-                  <p>
-                    从一片机翼到一架奇妙的飞行器。
-                    <br />
-                    发现好视频、酷设计，以及值得研究的航空灵感。
-                  </p>
-                  <button
-                    className="primary"
-                    onClick={() =>
-                      document.getElementById('feed')?.scrollIntoView({ behavior: 'smooth' })
-                    }
-                  >
-                    开始探索 <ArrowDown size={16} />
-                  </button>
-                  <div className="hero-motto">
-                    <span>专业一点。</span>有趣很多。
-                  </div>
-                </div>
-                <WingLab />
-              </section>
-            ) : (
+            {showCover && !loading && (
+              <EditorialCover articles={articles} preview={demoMode} onTopic={openTopic} />
+            )}
+            {page === 'topics' && (
               <section className="topics-heading">
                 <span className="eyebrow">FOLLOW YOUR CURIOSITY</span>
-                <h1>沿着一个问题，继续探索。</h1>
+                <h1>{category === '全部' ? '沿着一个问题，继续探索。' : category}</h1>
                 <p>空气如何流动，飞机如何设计，想法如何变成会飞的作品。</p>
               </section>
             )}
-            {demoMode && (
-              <div className="demo-notice">
-                <span className="tiny-dot" /> 预览版 · 展示内容依据真实来源整理，自动采集尚未启用。
-              </div>
+            <p className="demo-notice">
+              {demoMode
+                ? '预览版 · 内容依据真实来源整理，配图为 AI 概念图。自动采集尚未启用。'
+                : localMode
+                  ? '本地试运行 · 资讯来自本机数据库，技术档案由编辑维护，专题配图为 AI 概念图。'
+                  : '专题视觉配图为 AI 概念创作 · 内容保留原始来源。'}
+            </p>
+            {showCover && (
+              <AircraftPreview onOpen={openAircraft} onAll={() => navigate('aircraft')} />
             )}
-            {page === 'home' &&
-              !query &&
-              category === '全部' &&
-              kind === 'all' &&
-              picks.length > 0 && (
-                <section className="picks">
-                  <div className="section-title">
-                    <div>
-                      <span className="section-number">01 /</span>
-                      <h2>值得多看一眼</h2>
-                      <span className="section-sub">EDITOR'S PICKS</span>
-                    </div>
-                    <span className="muted">从有趣，到想弄懂。</span>
-                  </div>
-                  <div className="pick-grid">
-                    {picks.map((a) => (
-                      <ArticleCard key={a.id} article={a} />
-                    ))}
-                  </div>
-                </section>
-              )}
             <section id="feed" className="feed">
               <div className="section-title">
                 <div>
-                  <span className="section-number">{page === 'home' ? '02' : '01'} /</span>
-                  <h2>{page === 'home' ? '探索信息流' : '按兴趣发现'}</h2>
+                  <h2>{query ? `搜索：${query}` : page === 'home' ? '继续探索' : '按兴趣发现'}</h2>
                   <span className="section-sub">KEEP EXPLORING</span>
                 </div>
                 <button className="icon-button" aria-label="刷新资讯" onClick={reload}>
@@ -361,8 +484,8 @@ export default function App() {
               </div>
               {!loading && filtered.length > 0 && (
                 <p className="feed-end">
-                  本次加载 {articles.length} 条 · 当前显示 {filtered.length} 条 · 好奇心没有终点{' '}
-                  <span>✦</span>
+                  本次加载 {articles.length} 条 · 当前显示 {filtered.length} 条 ·
+                  好奇心没有终点{' '}
                 </p>
               )}
             </section>
