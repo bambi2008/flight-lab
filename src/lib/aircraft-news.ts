@@ -10,7 +10,15 @@ const modelNames: Record<string, RegExp> = {
 
 export function aircraftNews(profile: AircraftProfile, articles: Article[]): Article[] {
   const pattern = modelNames[profile.id];
-  if (!pattern) return [];
+  const aliases = [profile.name, ...(profile.aliases ?? [])]
+    .filter(Boolean)
+    .map(
+      (name) =>
+        new RegExp(
+          `(?:^|[^a-z0-9])${name.normalize('NFKC').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9])`,
+          'i',
+        ),
+    );
   const seen = new Set<string>();
   return articles
     .filter((article) => {
@@ -19,7 +27,7 @@ export function aircraftNews(profile: AircraftProfile, articles: Article[]): Art
       const text = `${article.original_title} ${article.title} ${article.tags.join(' ')}`.normalize(
         'NFKC',
       );
-      if (!pattern.test(text)) return false;
+      if (!pattern?.test(text) && !aliases.some((alias) => alias.test(text))) return false;
       try {
         const url = new URL(article.original_url);
         if (url.protocol !== 'https:' || url.username || url.password) return false;

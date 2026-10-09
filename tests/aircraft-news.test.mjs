@@ -80,3 +80,29 @@ test('news dates distinguish known Shanghai timestamps from source dates without
   assert.equal(newsPublishedDate(item()), '2026.10.09 02:05');
   assert.equal(newsPublishedDate(item({ published_precision: 'date' })), '2026.10.08');
 });
+
+test('newly edited model names and aliases use literal matching without regular-expression expansion', () => {
+  const profile = { id: 'new-model', name: 'S4 (E)', aliases: ['S4-E'] };
+  const articles = [
+    item({
+      id: 'literal',
+      original_title: 'S4 (E) testing',
+      original_url: 'https://example.com/literal',
+    }),
+    item({ id: 'alias', original_title: 'S4-E flight', original_url: 'https://example.com/alias' }),
+    item({
+      id: 'different',
+      original_title: 'S4 E testing',
+      original_url: 'https://example.com/other',
+    }),
+    item({
+      id: 'suffix',
+      original_title: 'S4-E2 flight',
+      original_url: 'https://example.com/suffix',
+    }),
+  ];
+  assert.deepEqual(
+    aircraftNews(profile, articles).map((a) => a.id),
+    ['literal', 'alias'],
+  );
+});

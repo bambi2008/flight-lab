@@ -1,5 +1,5 @@
 export type AircraftDomain = '民用' | '军用' | '实验';
-type Evidence = '试飞实测' | '官方公布' | '厂家指标' | '未公开';
+export type Evidence = '试飞实测' | '官方公布' | '厂家指标' | '研制目标' | '未公开';
 export type AircraftSource = {
   id: string;
   name: string;
@@ -15,6 +15,7 @@ export type AircraftProfile = {
   maker: string;
   stage: string;
   checkedAt: string;
+  aliases?: string[];
   summary: string;
   latest: { title: string; date: string; eventDate: string; summary: string; source: string };
   specs: { label: string; value: string; evidence: Evidence; note: string; source: string }[];

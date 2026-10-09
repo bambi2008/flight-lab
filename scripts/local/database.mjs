@@ -41,6 +41,7 @@ export async function openDatabase(dataDir) {
     'article_inputs',
     'ingest_runs',
     'ai_usage',
+    'aircraft_profiles',
   ];
   for (const table of tables) {
     const result = await pg.query(

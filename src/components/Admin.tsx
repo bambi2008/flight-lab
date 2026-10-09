@@ -12,11 +12,13 @@ import {
   Activity,
   Edit3,
   X,
+  Plane,
 } from 'lucide-react';
 import { db, demoMode, localMode, getAdminData } from '../lib/db';
 import { categories, type Article, type Source } from '../lib/types';
 import { safeLink } from './ArticleCard';
 import { publicationLatency } from '../lib/latency';
+import AircraftEditor from './AircraftEditor';
 
 type Draft = {
   title: string;
@@ -56,7 +58,9 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     [sources, setSources] = useState<Source[]>([]),
     [runs, setRuns] = useState<Record<string, unknown>[]>([]);
   const [weekly, setWeekly] = useState({ processed: 0, estimated_usd: 0, runs: 0 });
-  const [tab, setTab] = useState('pending'),
+  const [tab, setTab] = useState(() =>
+      new URLSearchParams(location.search).get('section') === 'aircraft' ? 'aircraft' : 'pending',
+    ),
     [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false),
     [editId, setEditId] = useState<string | null>(null),
@@ -459,6 +463,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
           ['rejected', '已下架', Ban],
           ['sources', '来源', Radio],
           ['runs', '运行记录', Activity],
+          ['aircraft', '机型档案', Plane],
         ].map(([v, label, Icon]) => {
           const I = Icon as typeof Eye;
           return (
@@ -473,7 +478,10 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
           );
         })}
       </div>
-      {tab === 'sources' ? (
+      <div hidden={tab !== 'aircraft'}>
+        <AircraftEditor onUpdated={onUpdated} />
+      </div>
+      {tab === 'aircraft' ? null : tab === 'sources' ? (
         <div className="source-list">
           <div className="source-note">
             YouTube 填频道 ID；RSS 支持 NASA、Airbus 与 Boeing 已验证的官方域名；GitHub 填

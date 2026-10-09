@@ -2,17 +2,14 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw, Search, X } from 'lucide-react';
 import type { Article } from '../lib/types';
 import { aircraftNews, newsPublishedDate } from '../lib/aircraft-news';
-import {
-  aircraftProfiles,
-  sourceFor,
-  type AircraftDomain,
-  type AircraftProfile,
-} from '../lib/aircraft';
+import { sourceFor, type AircraftDomain, type AircraftProfile } from '../lib/aircraft';
 
 const date = (value: string) => value.replaceAll('-', '.');
 
 type AircraftFeed = {
   articles: Article[];
+  profiles: AircraftProfile[];
+  profileError: string;
   loading: boolean;
   error: string;
   preview: boolean;
@@ -23,13 +20,15 @@ function FeedStatus({ feed }: { feed: AircraftFeed }) {
   return (
     <div className="aircraft-feed-status" aria-live="polite">
       <p>
-        {feed.error
-          ? '相关资讯暂时无法更新，已加载内容仍可阅读。'
-          : feed.loading
-            ? '正在读取相关资讯…'
-            : feed.preview
-              ? '资讯预览 · 参数与时间线由编辑整理'
-              : '相关资讯随发布更新 · 参数与时间线由编辑核对'}
+        {feed.profileError
+          ? '机型档案暂时无法更新，已加载内容仍可阅读。'
+          : feed.error
+            ? '相关资讯暂时无法更新，已加载内容仍可阅读。'
+            : feed.loading
+              ? '正在读取相关资讯…'
+              : feed.preview
+                ? '资讯预览 · 参数与时间线由编辑整理'
+                : '相关资讯随发布更新 · 参数与时间线由编辑核对'}
       </p>
       <button className="editorial-link" disabled={feed.loading} onClick={feed.onRefresh}>
         <RefreshCw size={13} /> {feed.loading ? '读取中' : '刷新资讯'}
@@ -200,7 +199,7 @@ export function AircraftPreview({
       <p className="aircraft-intro">
         民用、军用与实验飞行器。先看新进展，再沿着参数与设计往下研究。
       </p>
-      {aircraftProfiles.map((profile) => (
+      {feed.profiles.map((profile) => (
         <AircraftRow
           key={profile.id}
           profile={profile}
@@ -224,14 +223,14 @@ export function AircraftTracker({
   const [query, setQuery] = useState('');
   const filtered = useMemo(
     () =>
-      aircraftProfiles.filter(
+      feed.profiles.filter(
         (profile) =>
           (domain === '全部' || domain === profile.domain) &&
           `${profile.name} ${profile.maker} ${profile.subtitle} ${profile.latest.title}`
             .toLowerCase()
             .includes(query.trim().toLowerCase()),
       ),
-    [domain, query],
+    [domain, query, feed.profiles],
   );
   return (
     <section className="aircraft-page">
@@ -270,7 +269,9 @@ export function AircraftTracker({
       </div>
       <FeedStatus feed={feed} />
       <div aria-live="polite">
-        {filtered.length ? (
+        {feed.loading && !feed.profiles.length ? (
+          <p className="aircraft-snapshot-note">正在读取机型档案…</p>
+        ) : filtered.length ? (
           filtered.map((profile) => (
             <AircraftRow
               key={profile.id}
@@ -308,7 +309,20 @@ export function AircraftDossier({
   onBack: () => void;
   feed: AircraftFeed;
 }) {
-  const profile = aircraftProfiles.find((item) => item.id === id);
+  const profile = feed.profiles.find((item) => item.id === id);
+  if (!profile && feed.loading)
+    return (
+      <section className="empty">
+        <p>正在读取机型档案…</p>
+      </section>
+    );
+  if (!profile && feed.profileError)
+    return (
+      <section className="empty">
+        <p role="alert">{feed.profileError}</p>
+        <button onClick={feed.onRefresh}>重新加载档案</button>
+      </section>
+    );
   if (!profile)
     return (
       <section className="empty">
@@ -370,7 +384,7 @@ export function AircraftDossier({
           <section id="specifications" className="dossier-section">
             <span className="eyebrow">02 / THE NUMBERS</span>
             <h2>参数，要和依据一起看。</h2>
-            <p>试飞实测、厂家指标与未公开信息分别标注。数值适用条件见每一项说明。</p>
+            <p>试飞实测、厂家指标、研制目标与未公开信息分别标注。数值适用条件见每一项说明。</p>
             <div className="spec-table-wrap">
               <table className="aircraft-spec-table">
                 <caption className="sr-only">{profile.name} 参数及其来源</caption>
@@ -406,6 +420,7 @@ export function AircraftDossier({
           <section id="design-notes" className="dossier-section">
             <span className="eyebrow">03 / INSIDE THE DESIGN</span>
             <h2>设计解读</h2>
+            {!profile.design.length && <p>暂未收录设计解读。</p>}
             {profile.design.map((item) => (
               <div className="dossier-design-note" key={item.title}>
                 <h3>{item.title}</h3>
@@ -417,6 +432,7 @@ export function AircraftDossier({
           <section id="flight-timeline" className="dossier-section">
             <span className="eyebrow">04 / MILESTONES</span>
             <h2>沿着时间线研究</h2>
+            {!profile.timeline.length && <p>暂未收录可核对的里程碑。</p>}
             <ol className="aircraft-timeline">
               {profile.timeline.map((item) => (
                 <li key={item.date}>
@@ -453,6 +469,9 @@ export function AircraftDossier({
           <span className="eyebrow">YOUR NEXT QUESTION</span>
           <h2>值得再琢磨一下</h2>
           <p className="research-label">研究线索</p>
+          {!profile.questions.length && (
+            <p className="research-note">可以从参数的适用条件与原始资料开始研究。</p>
+          )}
           {profile.questions.map((question, index) => (
             <p className="research-question" key={question}>
               <span>0{index + 1}</span>

@@ -6,6 +6,8 @@ import ArticleCard from './components/ArticleCard';
 import EditorialCover from './components/EditorialCover';
 import Admin from './components/Admin';
 import { AircraftDossier, AircraftPreview, AircraftTracker } from './components/AircraftTracker';
+import type { AircraftProfile } from './lib/aircraft';
+import { getAircraftProfiles } from './lib/aircraft-store';
 
 type Page = 'home' | 'topics' | 'about' | 'admin' | 'aircraft' | 'aircraft-detail';
 const initialPage = (): Page =>
@@ -30,6 +32,8 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [profiles, setProfiles] = useState<AircraftProfile[]>([]);
+  const [profileError, setProfileError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [category, setCategory] = useState<Category>(() => {
@@ -45,8 +49,15 @@ export default function App() {
     fetching.current = true;
     if (!quiet) setLoading(true);
     try {
-      setArticles(await getArticles());
-      setError('');
+      const [news, files] = await Promise.allSettled([getArticles(), getAircraftProfiles()]);
+      if (news.status === 'fulfilled') {
+        setArticles(news.value);
+        setError('');
+      } else setError('资讯暂时无法加载，请稍后重试。');
+      if (files.status === 'fulfilled') {
+        setProfiles(files.value);
+        setProfileError('');
+      } else setProfileError('机型档案暂时无法加载，请稍后重试。');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -146,6 +157,8 @@ export default function App() {
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
   const aircraftFeed = {
     articles,
+    profiles,
+    profileError,
     loading,
     error,
     preview: demoMode,
