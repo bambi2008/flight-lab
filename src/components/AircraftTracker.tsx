@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, RefreshCw, Search, X } from 'lucide-react';
+import type { Article } from '../lib/types';
+import { aircraftNews, newsPublishedDate } from '../lib/aircraft-news';
 import {
   aircraftProfiles,
   sourceFor,
@@ -8,6 +10,76 @@ import {
 } from '../lib/aircraft';
 
 const date = (value: string) => value.replaceAll('-', '.');
+
+type AircraftFeed = {
+  articles: Article[];
+  loading: boolean;
+  error: string;
+  preview: boolean;
+  onRefresh: () => void;
+};
+
+function FeedStatus({ feed }: { feed: AircraftFeed }) {
+  return (
+    <div className="aircraft-feed-status" aria-live="polite">
+      <p>
+        {feed.error
+          ? '相关资讯暂时无法更新，已加载内容仍可阅读。'
+          : feed.loading
+            ? '正在读取相关资讯…'
+            : feed.preview
+              ? '资讯预览 · 参数与时间线由编辑整理'
+              : '相关资讯随发布更新 · 参数与时间线由编辑核对'}
+      </p>
+      <button className="editorial-link" disabled={feed.loading} onClick={feed.onRefresh}>
+        <RefreshCw size={13} /> {feed.loading ? '读取中' : '刷新资讯'}
+      </button>
+    </div>
+  );
+}
+
+function RelatedNews({ profile, feed }: { profile: AircraftProfile; feed: AircraftFeed }) {
+  const news = aircraftNews(profile, feed.articles);
+  return (
+    <section id="related-updates" className="dossier-section aircraft-related-news">
+      <span className="eyebrow">FOLLOW THE AIRCRAFT</span>
+      <h2>这架飞机的新消息</h2>
+      <FeedStatus feed={feed} />
+      {news.length ? (
+        <ol className="aircraft-news-list">
+          {news.slice(0, 8).map((article) => (
+            <li key={article.id}>
+              <p className="aircraft-date">
+                {article.source_name} · 来源发布{' '}
+                <time dateTime={article.published_at}>{newsPublishedDate(article)}</time>
+                {article.published_precision === 'date' ? '（日期）' : '（北京时间）'}
+              </p>
+              <h3>
+                <a href={article.original_url} target="_blank" rel="noopener noreferrer">
+                  {article.title}
+                  <ArrowUpRight size={16} />
+                </a>
+              </h3>
+              <p>{article.summary}</p>
+              <p className="aircraft-news-question">值得研究：{article.why_it_matters}</p>
+              <span className="aircraft-snapshot-note">
+                {article.summary_basis === 'manual'
+                  ? '编辑整理'
+                  : article.summary_basis === 'description'
+                    ? '依据视频简介'
+                    : '依据来源摘录'}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : !feed.loading && !feed.error ? (
+        <p className="aircraft-news-empty">
+          暂时没有已发布的相关资讯。先沿着下方的公开资料了解这款飞机。
+        </p>
+      ) : null}
+    </section>
+  );
+}
 
 function Citation({ profile, id }: { profile: AircraftProfile; id: string }) {
   const source = sourceFor(profile, id);
@@ -28,10 +100,16 @@ function Citation({ profile, id }: { profile: AircraftProfile; id: string }) {
 function AircraftRow({
   profile,
   onOpen,
+  news,
 }: {
   profile: AircraftProfile;
   onOpen: (id: string) => void;
+  news: Article[];
 }) {
+  // A source with date-only precision can predate the editor's event record.
+  const latestNews = news.find(
+    (article) => article.published_at.slice(0, 10) >= profile.latest.date,
+  );
   return (
     <article className="aircraft-row">
       <div className="aircraft-identity">
@@ -53,11 +131,29 @@ function AircraftRow({
       </div>
       <div className="aircraft-update">
         <p className="aircraft-date">
-          消息发布 <time dateTime={profile.latest.date}>{date(profile.latest.date)}</time>
+          {latestNews ? '来源发布 ' : '档案消息发布 '}
+          <time dateTime={latestNews?.published_at ?? profile.latest.date}>
+            {latestNews ? newsPublishedDate(latestNews) : date(profile.latest.date)}
+          </time>
+          {latestNews && latestNews.published_precision !== 'date' ? '（北京时间）' : ''}
         </p>
-        <h3>{profile.latest.title}</h3>
-        <p>{profile.latest.summary}</p>
-        <Citation profile={profile} id={profile.latest.source} />
+        <h3>{latestNews?.title ?? profile.latest.title}</h3>
+        <p>{latestNews?.summary ?? profile.latest.summary}</p>
+        {latestNews ? (
+          <a
+            className="aircraft-citation"
+            href={latestNews.original_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {latestNews.source_name} <ArrowUpRight size={12} />
+          </a>
+        ) : (
+          <Citation profile={profile} id={profile.latest.source} />
+        )}
+        {news.length > 0 && (
+          <p className="aircraft-news-count">已发布相关资讯 {news.length} 条 · 在档案内阅读</p>
+        )}
       </div>
       <a
         className="editorial-link aircraft-open"
@@ -77,9 +173,11 @@ function AircraftRow({
 export function AircraftPreview({
   onOpen,
   onAll,
+  feed,
 }: {
   onOpen: (id: string) => void;
   onAll: () => void;
+  feed: AircraftFeed;
 }) {
   return (
     <section className="aircraft-preview" aria-labelledby="aircraft-preview-title">
@@ -103,14 +201,25 @@ export function AircraftPreview({
         民用、军用与实验飞行器。先看新进展，再沿着参数与设计往下研究。
       </p>
       {aircraftProfiles.map((profile) => (
-        <AircraftRow key={profile.id} profile={profile} onOpen={onOpen} />
+        <AircraftRow
+          key={profile.id}
+          profile={profile}
+          onOpen={onOpen}
+          news={aircraftNews(profile, feed.articles)}
+        />
       ))}
-      <p className="aircraft-snapshot-note">档案预览 · 资料核对于 2026.10.08 · 自动追踪尚未启用</p>
+      <FeedStatus feed={feed} />
     </section>
   );
 }
 
-export function AircraftTracker({ onOpen }: { onOpen: (id: string) => void }) {
+export function AircraftTracker({
+  onOpen,
+  feed,
+}: {
+  onOpen: (id: string) => void;
+  feed: AircraftFeed;
+}) {
   const [domain, setDomain] = useState<AircraftDomain | '全部'>('全部');
   const [query, setQuery] = useState('');
   const filtered = useMemo(
@@ -159,13 +268,16 @@ export function AircraftTracker({ onOpen }: { onOpen: (id: string) => void }) {
           )}
         </label>
       </div>
-      <p className="aircraft-snapshot-note">
-        资料核对于 2026.10.08 · 当前为人工整理的档案预览，自动追踪尚未启用。
-      </p>
+      <FeedStatus feed={feed} />
       <div aria-live="polite">
         {filtered.length ? (
           filtered.map((profile) => (
-            <AircraftRow key={profile.id} profile={profile} onOpen={onOpen} />
+            <AircraftRow
+              key={profile.id}
+              profile={profile}
+              onOpen={onOpen}
+              news={aircraftNews(profile, feed.articles)}
+            />
           ))
         ) : (
           <div className="empty">
@@ -187,7 +299,15 @@ export function AircraftTracker({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-export function AircraftDossier({ id, onBack }: { id: string; onBack: () => void }) {
+export function AircraftDossier({
+  id,
+  onBack,
+  feed,
+}: {
+  id: string;
+  onBack: () => void;
+  feed: AircraftFeed;
+}) {
   const profile = aircraftProfiles.find((item) => item.id === id);
   if (!profile)
     return (
@@ -224,11 +344,12 @@ export function AircraftDossier({ id, onBack }: { id: string; onBack: () => void
           <p>
             资料核对 <time dateTime={profile.checkedAt}>{date(profile.checkedAt)}</time>
           </p>
-          <small>人工整理 · 自动追踪尚未启用</small>
+          <small>参数与时间线由编辑核对 · 相关资讯随发布更新</small>
         </div>
       </header>
       <nav className="dossier-nav" aria-label="档案章节">
-        <a href="#latest-update">新进展</a>
+        <a href="#related-updates">相关资讯</a>
+        <a href="#latest-update">档案进展</a>
         <a href="#specifications">参数与依据</a>
         <a href="#design-notes">设计解读</a>
         <a href="#flight-timeline">时间线</a>
@@ -236,6 +357,7 @@ export function AircraftDossier({ id, onBack }: { id: string; onBack: () => void
       </nav>
       <div className="dossier-layout">
         <div className="dossier-content">
+          <RelatedNews profile={profile} feed={feed} />
           <section id="latest-update" className="dossier-section">
             <span className="eyebrow">01 / THE UPDATE</span>
             <h2>{profile.latest.title}</h2>

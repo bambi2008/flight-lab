@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Search, Plane, SlidersHorizontal, X, Menu, RefreshCw } from 'lucide-react';
 import { demoMode, localMode, getArticles } from './lib/db';
 import { categories, type Article, type Category } from './lib/types';
@@ -39,20 +39,37 @@ export default function App() {
   const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('latest');
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetching = useRef(false);
+  const reload = useCallback(async (quiet = false) => {
+    if (fetching.current) return;
+    fetching.current = true;
+    if (!quiet) setLoading(true);
     try {
       setArticles(await getArticles());
+      setError('');
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setLoading(false);
+      fetching.current = false;
+      if (!quiet) setLoading(false);
     }
   }, []);
   useEffect(() => {
     void reload();
   }, [reload]);
+  useEffect(() => {
+    if (demoMode || page === 'admin') return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void reload(true);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [page, reload]);
   useEffect(() => {
     const fn = () => {
       setPage(initialPage());
@@ -127,6 +144,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', onEscape);
   }, [menu, searchOpen]);
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
+  const aircraftFeed = {
+    articles,
+    loading,
+    error,
+    preview: demoMode,
+    onRefresh: () => void reload(),
+  };
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -295,11 +319,15 @@ export default function App() {
       </header>
       <main id="main-content">
         {page === 'admin' ? (
-          <Admin onUpdated={reload} />
+          <Admin onUpdated={() => reload()} />
         ) : page === 'aircraft' ? (
-          <AircraftTracker onOpen={openAircraft} />
+          <AircraftTracker onOpen={openAircraft} feed={aircraftFeed} />
         ) : page === 'aircraft-detail' ? (
-          <AircraftDossier id={aircraftId} onBack={() => navigate('aircraft')} />
+          <AircraftDossier
+            id={aircraftId}
+            onBack={() => navigate('aircraft')}
+            feed={aircraftFeed}
+          />
         ) : page === 'about' ? (
           <section className="about-page">
             <span className="eyebrow">A SHARED CURIOSITY</span>
@@ -371,7 +399,11 @@ export default function App() {
                   : '专题视觉配图为 AI 概念创作 · 内容保留原始来源。'}
             </p>
             {showCover && (
-              <AircraftPreview onOpen={openAircraft} onAll={() => navigate('aircraft')} />
+              <AircraftPreview
+                onOpen={openAircraft}
+                onAll={() => navigate('aircraft')}
+                feed={aircraftFeed}
+              />
             )}
             <section id="feed" className="feed">
               <div className="section-title">
@@ -379,7 +411,7 @@ export default function App() {
                   <h2>{query ? `搜索：${query}` : page === 'home' ? '继续探索' : '按兴趣发现'}</h2>
                   <span className="section-sub">KEEP EXPLORING</span>
                 </div>
-                <button className="icon-button" aria-label="刷新资讯" onClick={reload}>
+                <button className="icon-button" aria-label="刷新资讯" onClick={() => void reload()}>
                   <RefreshCw size={16} className={loading ? 'spin' : ''} />
                 </button>
               </div>
@@ -442,10 +474,18 @@ export default function App() {
                 </label>
               </div>
               <div aria-live="polite">
-                {error ? (
+                {error && articles.length > 0 && (
+                  <p className="preview-note" role="status">
+                    {error} 以下保留上次加载的内容。
+                    <button className="editorial-link" onClick={() => void reload()}>
+                      重试
+                    </button>
+                  </p>
+                )}
+                {error && articles.length === 0 ? (
                   <div className="empty">
                     <h3>{error}</h3>
-                    <button onClick={reload}>重新加载</button>
+                    <button onClick={() => void reload()}>重新加载</button>
                   </div>
                 ) : loading ? (
                   <div className="skeleton-grid">

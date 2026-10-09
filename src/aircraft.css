@@ -66,6 +66,73 @@
   line-height: 1.8;
   padding-top: 16px;
 }
+.aircraft-feed-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.aircraft-feed-status button {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.aircraft-feed-status button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.aircraft-update > .aircraft-news-count {
+  color: var(--accent);
+  font-size: 12px;
+  margin-top: 12px;
+}
+.aircraft-news-list {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0;
+}
+.aircraft-news-list li {
+  border-top: 1px solid var(--line);
+  padding: 22px 0;
+}
+.aircraft-news-list h3 {
+  font-size: 23px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.aircraft-news-list h3 a {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+.aircraft-news-list h3 svg {
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+.aircraft-news-list h3 a:hover {
+  color: var(--accent);
+}
+.aircraft-news-list li > p:not(.aircraft-date),
+.aircraft-news-empty {
+  font-size: 14px;
+  line-height: 1.95;
+}
+.aircraft-news-question {
+  color: var(--muted);
+  margin-top: 14px;
+}
+.aircraft-news-list .aircraft-snapshot-note {
+  display: block;
+  padding-top: 10px;
+}
+.aircraft-news-empty {
+  margin-top: 22px;
+  color: var(--muted);
+}
 .aircraft-page {
   padding: 55px 0 65px;
 }

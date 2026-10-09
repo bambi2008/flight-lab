@@ -3,6 +3,7 @@ import { fetchSource } from '../supabase/functions/_shared/sources.mjs';
 const sources = [
   { name: 'Real Engineering', kind: 'youtube', locator: 'UCR1IuLEqb6UEA_zQ81kwXfg' },
   { name: 'NASA Aeronautics', kind: 'rss', locator: 'https://www.nasa.gov/aeronautics/feed/' },
+  { name: 'NASA Quesst', kind: 'rss', locator: 'https://www.nasa.gov/blogs/quesst/feed/' },
   {
     name: 'Airbus Civil',
     kind: 'rss',
