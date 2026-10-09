@@ -7,6 +7,7 @@ export const rssHosts = new Set([
   'investors.boeing.com',
   'investors.lockheedmartin.com',
   'www.af.mil',
+  'ir.jobyaviation.com',
 ]);
 export function trustedUrl(value) {
   const url = new URL(value);

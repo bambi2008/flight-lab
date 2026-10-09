@@ -71,6 +71,14 @@ export function extractOfficialExcerpt(html, hostname) {
         'article',
       ),
     );
+  if (hostname === 'ir.jobyaviation.com')
+    return excerptText(
+      container(
+        clean,
+        /<article\b[^>]*class=["'][^"']*\bfull-news-article\b[^"']*["'][^>]*>/i,
+        'article',
+      ),
+    );
   const marker =
     hostname === 'investors.boeing.com'
       ? /<div\b[^>]*class=["'][^"']*\bevergreen-news-body\b[^"']*["'][^>]*>/i
@@ -83,9 +91,11 @@ export function extractOfficialExcerpt(html, hostname) {
 export async function enrichExcerpt(item, fetcher = fetch) {
   if (item.kind !== 'article' || item.raw_text.length >= 1500) return item.raw_text;
   // These official feeds contain introductory summaries; read the story for engineering detail.
-  const detailedFeed = ['www.af.mil', 'investors.lockheedmartin.com'].includes(
-    new URL(item.original_url).hostname,
-  );
+  const detailedFeed = [
+    'www.af.mil',
+    'investors.lockheedmartin.com',
+    'ir.jobyaviation.com',
+  ].includes(new URL(item.original_url).hostname);
   if (!detailedFeed && item.raw_text.length >= 250) return item.raw_text;
   const url = trustedUrl(item.original_url);
   const response = await trustedResponse(url.href, {

@@ -6,6 +6,7 @@ export function publicationLatency(articles: Article[], now = Date.now()) {
       article.source_id &&
       article.status === 'published' &&
       article.process_state === 'complete' &&
+      article.summary_basis !== 'manual' &&
       article.published_precision !== 'date' &&
       now - Date.parse(article.published_at) <= 72 * 3600_000,
   );

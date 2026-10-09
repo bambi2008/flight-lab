@@ -8,5 +8,6 @@ insert into public.sources (name,kind,locator,enabled) values
 ('Boeing / Official Releases','rss','https://investors.boeing.com/rss/pressrelease.aspx',true),
 ('Lockheed Martin / Official Releases','rss','https://investors.lockheedmartin.com/rss/news-releases.xml',true),
 ('U.S. Air Force / Official News','rss','https://www.af.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1&isdashboardselected=0&max=20',true),
+('Joby / Official Releases','rss','https://ir.jobyaviation.com/news-events/press-releases/rss',true),
 ('GitHub / Aerodynamics','github','aerodynamics',true)
 on conflict (kind,locator) do nothing;

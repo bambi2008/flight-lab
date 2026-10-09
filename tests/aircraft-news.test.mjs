@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aircraftNews, newsPublishedDate } from '../src/lib/aircraft-news.ts';
+import { aircraftProfiles } from '../src/lib/aircraft.ts';
 
 const item = (changes = {}) => ({
   id: 'news',
@@ -11,6 +12,44 @@ const item = (changes = {}) => ({
   published_at: '2026-10-08T18:05:00Z',
   original_url: 'https://www.nasa.gov/news/flight-test',
   ...changes,
+});
+
+test('Joby eVTOL news does not mix company-wide jet service or the J208 autonomous demonstrator', () => {
+  const profile = aircraftProfiles.find((p) => p.id === 'joby-evtol');
+  const articles = [
+    item({
+      id: 'evtol',
+      original_title: 'Joby electric air taxi flight',
+      original_url: 'https://ir.jobyaviation.com/evtol',
+    }),
+    item({
+      id: 'tagged',
+      original_title: 'Joby Launches eIPP Flights in Texas',
+      tags: ['Joby eVTOL'],
+      original_url: 'https://ir.jobyaviation.com/texas',
+    }),
+    item({
+      id: 'j208',
+      original_title: 'Joby Completes Fully Autonomous J208 Flight',
+      tags: ['Joby', 'J208'],
+      original_url: 'https://ir.jobyaviation.com/j208',
+    }),
+    item({
+      id: 'jets',
+      original_title: 'Blade jet service',
+      tags: ['Joby'],
+      original_url: 'https://ir.jobyaviation.com/jets',
+    }),
+    item({
+      id: 'model-suffix',
+      original_title: 'JAS4-10 research',
+      original_url: 'https://ir.jobyaviation.com/other-model',
+    }),
+  ];
+  assert.deepEqual(
+    aircraftNews(profile, articles).map((article) => article.id),
+    ['evtol', 'tagged'],
+  );
 });
 
 test('aircraft news excludes unpublished items, nearby model numbers and incidental summary mentions', () => {

@@ -225,6 +225,38 @@ test('oversized official bodies stop at a complete sentence instead of a clipped
   assert(text.length <= 6000);
   assert(!text.includes('unverified'));
 });
+test('Joby feeds preserve two-digit year and timezone; article scope excludes unrelated aircraft teasers', async () => {
+  const source = {
+    kind: 'rss',
+    locator: 'https://ir.jobyaviation.com/news-events/press-releases/rss',
+  };
+  const fixture =
+    '<rss><channel><item><title>Joby Launches eIPP Flights in Texas</title><link>https://ir.jobyaviation.com/news-events/press-releases/detail/191/joby-launches-eipp-flights-in-texas</link><pubDate>Thu, 10 Sep 26 12:02:00 -0400</pubDate><description></description></item></channel></rss>';
+  const [item] = await fetchSource(source, {
+    parser: new XMLParser(),
+    fetcher: async () => new Response(fixture),
+  });
+  assert.equal(item.published_at, '2026-09-10T16:02:00.000Z');
+  assert.equal(item.published_precision, 'exact');
+  assert.equal(item.raw_text, '');
+  const html =
+    '<nav>Autonomous J208 cross-country tour</nav><article class="full-news-article"><h1>Joby electric air taxi</h1><div><p>Airspace integration testing at DFW.</p></div></article><article>Blade jet service</article>';
+  assert.equal(
+    extractOfficialExcerpt(html, 'ir.jobyaviation.com'),
+    'Joby electric air taxi Airspace integration testing at DFW.',
+  );
+  assert.equal(
+    extractOfficialExcerpt('<article>Related aircraft only</article>', 'ir.jobyaviation.com'),
+    '',
+  );
+  const enriched = await enrichExcerpt(
+    item,
+    async () => new Response(html, { headers: { 'Content-Type': 'text/html' } }),
+  );
+  assert.equal(enriched, 'Joby electric air taxi Airspace integration testing at DFW.');
+  await assert.rejects(trustedResponse('https://ir.jobyaviation.com.example.org/feed'));
+});
+
 test('latency excludes manual, unknown-clock and inconsistent timestamps', () => {
   const now = Date.parse('2026-10-08T10:00:00Z');
   const item = {
@@ -240,6 +272,7 @@ test('latency excludes manual, unknown-clock and inconsistent timestamps', () =>
     item,
     { ...item, processed_at: '2026-10-08T09:30:00Z' },
     { ...item, source_id: null },
+    { ...item, summary_basis: 'manual' },
     { ...item, published_precision: 'date' },
     { ...item, created_at: 'bad' },
     { ...item, processed_at: '2026-10-08T08:00:00Z' },
