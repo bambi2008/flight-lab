@@ -56,7 +56,7 @@ test('editable dossiers enforce RLS, database publication checks, version confli
   };
   const write = { table: 'aircraft_profiles', operation: 'insert', fields: 'id', returning: true };
   try {
-    assert.equal((await db.execute(select, 'anon')).data.length, 3);
+    assert.equal((await db.execute(select, 'anon')).data.length, aircraftProfiles.length);
     assert((await db.execute({ ...select, fields: 'revision' }, 'anon')).error);
     const fixture = { ...structuredClone(aircraftProfiles[0]), id: 'fixture-aircraft' };
     assert(
@@ -180,7 +180,7 @@ test('editable dossiers enforce RLS, database publication checks, version confli
     assert.equal(restored.status, 'published');
     assert.equal(
       (await db.pg.query('select count(*)::int as count from aircraft_profiles')).rows[0].count,
-      4,
+      aircraftProfiles.length + 1,
     );
   } finally {
     await db.pg.close();
