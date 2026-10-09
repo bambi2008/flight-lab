@@ -107,6 +107,37 @@ test('official excerpt excludes navigation, footer and executable content', asyn
   );
   assert.equal(called, false);
 });
+test('Airbus web stories read only the full-view section, including nested sections', async () => {
+  const story =
+    '<article class="awx-node-push"><div class="text-content rte">Navigation teaser.</div></article><section class="node node--web-story view-mode-full"><section><div>Hero artwork</div></section><div class="text-content awx-belly--narrow rte"><p>A350F flight control law testing.</p><div>MSN700 flight test telemetry.</div></div><section><article>Related articles.</article></section></section><footer>Footer.</footer>';
+  assert.equal(
+    extractOfficialExcerpt(story, 'www.airbus.com'),
+    'A350F flight control law testing. MSN700 flight test telemetry.',
+  );
+  assert.equal(
+    extractOfficialExcerpt(
+      '<section class="node--web-story"><div class="text-content rte">Unverified section</div></section>',
+      'www.airbus.com',
+    ),
+    '',
+  );
+  assert.equal(
+    extractOfficialExcerpt(
+      '<section class="view-mode-full"><article>Related articles only.</article></section>',
+      'www.airbus.com',
+    ),
+    '',
+  );
+  const excerpt = await enrichExcerpt(
+    {
+      kind: 'article',
+      raw_text: '',
+      original_url: 'https://www.airbus.com/en/newsroom/stories/test',
+    },
+    async () => new Response(story, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }),
+  );
+  assert.equal(excerpt, 'A350F flight control law testing. MSN700 flight test telemetry.');
+});
 test('frequent polling keeps slow feeds throttled and manual sources untouched', () => {
   const now = Date.parse('2026-10-08T10:00:00Z');
   const source = { enabled: true, kind: 'rss', last_fetched_at: '2026-10-08T09:50:00Z' };

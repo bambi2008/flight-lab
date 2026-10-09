@@ -27,11 +27,10 @@ export function extractOfficialExcerpt(html, hostname) {
     .replace(/<style[\s\S]*?<\/style>/gi, '');
   if (hostname === 'www.airbus.com') {
     // Airbus navigation contains article teasers before the actual full-view article.
-    const article = container(
-      clean,
-      /<article\b[^>]*class=["'][^"']*\bview-mode-full\b[^"']*["'][^>]*>/i,
-      'article',
-    );
+    // Press releases use article; web stories use section. Both must be full-view nodes.
+    const fullView = /<(article|section)\b[^>]*class=["'][^"']*\bview-mode-full\b[^"']*["'][^>]*>/i;
+    const tag = fullView.exec(clean)?.[1]?.toLowerCase();
+    const article = tag ? container(clean, fullView, tag) : '';
     const body = container(
       article,
       /<div\b[^>]*class=["'][^"']*\btext-content\b[^"']*\brte\b[^"']*["'][^>]*>/i,

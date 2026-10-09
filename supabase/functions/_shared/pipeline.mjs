@@ -175,7 +175,7 @@ export async function ingest({ db, parser, config }) {
                   .eq('article_id', item.id),
               );
           }
-          if (rawText.length < 80) throw new Error('官方来源正文不足，保留待审，不调用模型');
+          if (rawText.length < 80) throw new Error('来源材料不足，保留待审，不调用模型');
           const analysis = await analyze({ ...item, raw_text: rawText }, config, async (usage) => {
             must(
               await db.from('ai_usage').insert({ ...usage, article_id: item.id, run_id: runId }),
