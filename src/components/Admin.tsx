@@ -521,8 +521,8 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
       {tab === 'aircraft' ? null : tab === 'sources' ? (
         <div className="source-list">
           <div className="source-note">
-            YouTube 填频道 ID；RSS 支持 NASA、Airbus 与 Boeing 已验证的官方域名；GitHub 填
-            topic。哔哩哔哩视频通过“添加链接”收录。
+            YouTube 填频道 ID；RSS 支持 NASA、Airbus、Boeing、Lockheed Martin
+            和美国空军已验证的官方域名；GitHub 填 topic。哔哩哔哩视频通过“添加链接”收录。
             <br />
             检查连接只读取来源，不生成摘要或发布内容，不影响下次采集。检查结果仅保留在当前页面。
           </div>

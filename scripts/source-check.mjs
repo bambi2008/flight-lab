@@ -20,6 +20,17 @@ const sources = [
     locator: 'https://www.airbus.com/en/generate-rss-feeds?tid=15591&fid=29736',
   },
   { name: 'Boeing', kind: 'rss', locator: 'https://investors.boeing.com/rss/pressrelease.aspx' },
+  {
+    name: 'Lockheed Martin',
+    kind: 'rss',
+    locator: 'https://investors.lockheedmartin.com/rss/news-releases.xml',
+  },
+  {
+    name: 'U.S. Air Force',
+    kind: 'rss',
+    locator:
+      'https://www.af.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1&isdashboardselected=0&max=20',
+  },
   { name: 'GitHub Aerodynamics', kind: 'github', locator: 'aerodynamics' },
 ];
 let failed = false;

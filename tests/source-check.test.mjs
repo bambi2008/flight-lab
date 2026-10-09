@@ -53,7 +53,7 @@ test('stored-source diagnostics only read approved saved URLs and preserve conte
       fetcher: async () => new Response('<html>Not a feed</html>'),
     });
     assert.equal(empty.ok, false);
-    assert.match(empty.message, /未读到条目/);
+    assert.match(empty.message, /可识别的 RSS/);
     await assert.rejects(
       checkStoredSource({
         db: database.client,

@@ -165,7 +165,7 @@ export async function ingest({ db, parser, config }) {
         try {
           // Enrich only deduplicated queued items, so polling never re-downloads every article.
           let rawText = input.raw_text;
-          if (item.kind === 'article' && rawText.length < 250) {
+          if (item.kind === 'article') {
             rawText = await enrichExcerpt({ ...item, raw_text: rawText });
             if (rawText !== input.raw_text)
               must(

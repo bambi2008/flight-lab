@@ -5,6 +5,8 @@ export const rssHosts = new Set([
   'nasa.gov',
   'www.airbus.com',
   'investors.boeing.com',
+  'investors.lockheedmartin.com',
+  'www.af.mil',
 ]);
 export function trustedUrl(value) {
   const url = new URL(value);
@@ -154,6 +156,7 @@ export async function fetchSource(source, { parser, fetcher = fetch, githubToken
       image_url: `https://i.ytimg.com/vi/${e['yt:videoId']}/hqdefault.jpg`,
     }));
   const entries = [].concat(xml.rss?.channel?.item ?? []);
+  if (!xml.rss?.channel) throw new Error('来源未返回可识别的 RSS，请稍后检查连接');
   return entries.flatMap((e) => {
     try {
       const title = plainText(e.title, 200);

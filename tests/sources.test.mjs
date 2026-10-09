@@ -148,6 +148,83 @@ test('frequent polling keeps slow feeds throttled and manual sources untouched',
   assert.equal(pollIntervalMinutes({ kind: 'youtube' }), 30);
   assert.equal(pollIntervalMinutes({ kind: 'github' }), 360);
 });
+test('military official excerpts read source-specific story containers and enrich short introductions', async () => {
+  const airForce =
+    '<nav>Site navigation</nav><article class="article-detail"><h1>Title</h1><section class="article-detail-content"><p>B-21 remains in flight test.</p><div>Production capacity expansion is planned.</div><script>bad()</script></section><footer>Related news</footer></article>';
+  const lockheed =
+    '<nav>Investor menu</nav><article class="teaser">Wrong teaser</article><article class="node node--type-nir-news node--view-mode-full"><p>Aircraft prototype research.</p><div>Published manufacturer claims.</div></article><footer>Investor footer</footer>';
+  assert.equal(
+    extractOfficialExcerpt(airForce, 'www.af.mil'),
+    'B-21 remains in flight test. Production capacity expansion is planned.',
+  );
+  assert.equal(
+    extractOfficialExcerpt(lockheed, 'investors.lockheedmartin.com'),
+    'Aircraft prototype research. Published manufacturer claims.',
+  );
+  assert.equal(extractOfficialExcerpt('<article>Unrecognized layout</article>', 'www.af.mil'), '');
+  const item = {
+    kind: 'article',
+    original_url: 'https://www.af.mil/News/Article-Display/Article/123/test/',
+    raw_text: 'Intro '.repeat(60),
+  };
+  const body = airForce.replace(
+    'B-21 remains in flight test.',
+    'B-21 remains in flight test. '.repeat(30),
+  );
+  let calls = 0;
+  const enriched = await enrichExcerpt(item, async () => {
+    calls++;
+    return new Response(body, { headers: { 'Content-Type': 'text/html' } });
+  });
+  assert(enriched.length > item.raw_text.length);
+  assert.equal(calls, 1);
+  const fallback = await enrichExcerpt(
+    item,
+    async () => new Response('<nav>No story</nav>', { headers: { 'Content-Type': 'text/html' } }),
+  );
+  assert.equal(fallback, item.raw_text);
+  await enrichExcerpt({ ...item, raw_text: 'x'.repeat(1600) }, async () => {
+    throw Error('must not download complete content');
+  });
+});
+
+test('new official feeds parse timezone-aware dates while rejecting non-feed responses', async () => {
+  const parser = new XMLParser({ ignoreAttributes: false, processEntities: false });
+  for (const [host, locator] of [
+    ['www.af.mil', 'https://www.af.mil/DesktopModules/ArticleCS/RSS.ashx?max=20'],
+    ['investors.lockheedmartin.com', 'https://investors.lockheedmartin.com/rss/news-releases.xml'],
+  ]) {
+    const source = { kind: 'rss', locator };
+    const items = await fetchSource(source, {
+      parser,
+      fetcher: async () =>
+        new Response(
+          `<rss><channel><item><title>B-21 research</title><link>https://${host}/news/story</link><pubDate>Thu, 08 Oct 2026 13:00:00 GMT</pubDate><description>Public aircraft research.</description></item></channel></rss>`,
+        ),
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0].published_precision, 'exact');
+    assert.equal(items[0].published_at, '2026-10-08T13:00:00.000Z');
+    await assert.rejects(
+      fetchSource(source, {
+        parser,
+        fetcher: async () => new Response('<html>Access check</html>'),
+      }),
+      /可识别的 RSS/,
+    );
+  }
+});
+test('oversized official bodies stop at a complete sentence instead of a clipped claim', () => {
+  const complete = 'Tested airflow. '.repeat(371);
+  const incomplete = 'A further unverified claim '.repeat(20);
+  const text = extractOfficialExcerpt(
+    `<article>${complete}${incomplete}</article>`,
+    'www.nasa.gov',
+  );
+  assert.equal(text, complete.trim());
+  assert(text.length <= 6000);
+  assert(!text.includes('unverified'));
+});
 test('latency excludes manual, unknown-clock and inconsistent timestamps', () => {
   const now = Date.parse('2026-10-08T10:00:00Z');
   const item = {
