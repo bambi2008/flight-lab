@@ -972,6 +972,42 @@ form button {
   font-size: 13px;
   color: #555;
 }
+.source-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.source-status {
+  margin-left: 12px;
+  font-size: 11px;
+  color: #666;
+}
+.source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.source-check-result {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #dedede;
+}
+.source-check-result.success {
+  color: #35624d;
+}
+.source-check-result.error {
+  color: #a56c5b;
+}
+@media (max-width: 600px) {
+  .source-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .source-actions {
+    width: 100%;
+  }
+}
 .modal-backdrop {
   position: fixed;
   inset: 0;

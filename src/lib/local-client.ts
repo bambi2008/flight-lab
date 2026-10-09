@@ -77,7 +77,12 @@ export function createLocalClient(): SupabaseClient {
   return {
     from: (table: string) => new LocalQuery(table),
     rpc: (name: string) => request('query', { rpc: name }),
-    functions: { invoke: () => request('ingest', {}) },
+    functions: {
+      invoke: (name: string, options?: { body?: unknown }) =>
+        name === 'ingest'
+          ? request('ingest', options?.body ?? {})
+          : Promise.resolve({ data: null, error: { message: '本地不支持此函数' } }),
+    },
     auth: {
       getUser: () => request<{ user: User | null }>('auth'),
       onAuthStateChange: (listener: (event: string, session: Session) => void) => {

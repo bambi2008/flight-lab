@@ -46,6 +46,13 @@ const runStatus: Record<string, string> = {
   awaiting_key: '等待模型密钥',
   failed: '未完成',
 };
+type SourceCheck = {
+  ok: boolean;
+  checked_at: string;
+  count: number;
+  latest_title: string;
+  message: string;
+};
 
 export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> }) {
   const [authorized, setAuthorized] = useState(false);
@@ -59,7 +66,11 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     [runs, setRuns] = useState<Record<string, unknown>[]>([]);
   const [weekly, setWeekly] = useState({ processed: 0, estimated_usd: 0, runs: 0 });
   const [tab, setTab] = useState(() =>
-      new URLSearchParams(location.search).get('section') === 'aircraft' ? 'aircraft' : 'pending',
+      ['aircraft', 'sources', 'runs'].includes(
+        new URLSearchParams(location.search).get('section') ?? '',
+      )
+        ? new URLSearchParams(location.search).get('section')!
+        : 'pending',
     ),
     [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false),
@@ -67,6 +78,8 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     [draft, setDraft] = useState<Draft>(emptyDraft);
   const [showSourceForm, setShowSourceForm] = useState(false),
     [sourceDraft, setSourceDraft] = useState({ name: '', kind: 'youtube', locator: '' });
+  const [sourceChecks, setSourceChecks] = useState<Record<string, SourceCheck>>({});
+  const [checkingSource, setCheckingSource] = useState<string | null>(null);
   const modalRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!showForm && !showSourceForm) return;
@@ -290,6 +303,30 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     else await reload();
     setBusy(false);
   }
+  async function checkSource(source: Source) {
+    if (!db) return;
+    setBusy(true);
+    setCheckingSource(source.id);
+    setError('');
+    setSourceChecks((previous) => {
+      const next = { ...previous };
+      delete next[source.id];
+      return next;
+    });
+    try {
+      const { data, error: err } = await db.functions.invoke('ingest', {
+        body: { action: 'check_source', source_id: source.id },
+      });
+      if (err || !data || typeof data.ok !== 'boolean')
+        throw new Error('连接检查未完成，请确认本地服务或函数已更新后重试。');
+      setSourceChecks((previous) => ({ ...previous, [source.id]: data as SourceCheck }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCheckingSource(null);
+      setBusy(false);
+    }
+  }
   async function addSource(e: React.FormEvent) {
     e.preventDefault();
     if (!db) return;
@@ -486,6 +523,8 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
           <div className="source-note">
             YouTube 填频道 ID；RSS 支持 NASA、Airbus 与 Boeing 已验证的官方域名；GitHub 填
             topic。哔哩哔哩视频通过“添加链接”收录。
+            <br />
+            检查连接只读取来源，不生成摘要或发布内容，不影响下次采集。检查结果仅保留在当前页面。
           </div>
           <button className="secondary" onClick={() => setShowSourceForm(true)}>
             <Plus size={14} />
@@ -495,6 +534,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
             <div className="source-row" key={s.id}>
               <div>
                 <strong>{s.name}</strong>
+                <span className="source-status">{s.enabled ? '已启用' : '已暂停'}</span>
                 <p>
                   {s.kind} · {s.locator}
                 </p>
@@ -507,16 +547,45 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                       : s.kind === 'github'
                         ? '6 小时'
                         : '手动'}{' '}
-                  · 最近检查：
+                  · 最近采集检查：
                   {s.last_fetched_at
                     ? new Date(s.last_fetched_at).toLocaleString('zh-CN')
                     : '尚未运行'}
                 </p>
-                {s.last_error && <span className="error">{s.last_error}</span>}
+                {s.last_error && <span className="error">最近采集异常：{s.last_error}</span>}
+                {sourceChecks[s.id] && (
+                  <div
+                    className={`source-check-result ${sourceChecks[s.id].ok ? 'success' : 'error'}`}
+                    role="status"
+                  >
+                    <strong>{sourceChecks[s.id].ok ? '本次连接正常' : '本次连接异常'}</strong>
+                    <p>
+                      {new Date(sourceChecks[s.id].checked_at).toLocaleString('zh-CN')}
+                      {' · '}
+                      {sourceChecks[s.id].ok
+                        ? `读取 ${sourceChecks[s.id].count} 条`
+                        : sourceChecks[s.id].message}
+                    </p>
+                    {sourceChecks[s.id].ok && <p>最新条目：{sourceChecks[s.id].latest_title}</p>}
+                  </div>
+                )}
               </div>
-              <button className="secondary" disabled={busy} onClick={() => toggleSource(s)}>
-                {s.enabled ? '暂停' : '启用'}
-              </button>
+              <div className="source-actions">
+                {s.kind !== 'manual' && (
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={() => checkSource(s)}
+                    aria-label={`检查 ${s.name} 连接`}
+                  >
+                    <RefreshCw size={14} className={checkingSource === s.id ? 'spinning' : ''} />
+                    {checkingSource === s.id ? '检查中…' : '检查连接'}
+                  </button>
+                )}
+                <button className="secondary" disabled={busy} onClick={() => toggleSource(s)}>
+                  {s.enabled ? '暂停' : '启用'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -764,7 +833,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                   onChange={(e) => setSourceDraft({ ...sourceDraft, kind: e.target.value })}
                 >
                   <option value="youtube">YouTube 频道</option>
-                  <option value="rss">NASA RSS</option>
+                  <option value="rss">官方 RSS</option>
                   <option value="github">GitHub topic</option>
                 </select>
               </label>

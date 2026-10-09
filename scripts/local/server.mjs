@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { XMLParser } from 'fast-xml-parser';
 import { adminId, openDatabase } from './database.mjs';
 import { ingest } from '../../supabase/functions/_shared/pipeline.mjs';
+import { checkStoredSource } from '../../supabase/functions/_shared/source-check.mjs';
 
 const projectDir = new URL('../../', import.meta.url);
 async function config() {
@@ -122,7 +123,20 @@ export function createLocalServer(database, loadConfig = config) {
         return json(result, result.error ? 400 : 200);
       }
       if (!authorized) return json({ error: { message: '需要管理员权限' } }, 401);
-      if (path === '/api/local/ingest') return json({ data: await collect(), error: null });
+      if (path === '/api/local/ingest') {
+        if (body.action === 'check_source')
+          return json({
+            data: await checkStoredSource({
+              db: database.client,
+              parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
+              sourceId: body.source_id,
+              githubToken: (await loadConfig()).githubToken,
+            }),
+            error: null,
+          });
+        if (body.action) return json({ data: null, error: { message: '不支持的操作' } }, 400);
+        return json({ data: await collect(), error: null });
+      }
       return json({ error: 'Not found' }, 404);
     } catch {
       return json({ data: null, error: { message: '本地请求未完成，请查看运行记录。' } }, 400);

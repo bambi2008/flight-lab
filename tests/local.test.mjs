@@ -45,6 +45,16 @@ test('local HTTP service enforces browser boundaries and RLS, runs ingestion, pu
     assert.equal(login.status, 200);
     assert.match(login.headers.get('set-cookie'), /HttpOnly; SameSite=Strict/);
     const cookie = login.headers.get('set-cookie').split(';')[0];
+    assert.equal(
+      (
+        await call('ingest', {
+          action: 'check_source',
+          source_id: '00000000-0000-4000-8000-000000000099',
+        })
+      ).status,
+      401,
+    );
+    assert.equal((await call('ingest', { action: 'unsupported' }, cookie)).status, 400);
     assert((await (await call('auth', undefined, cookie)).json()).data.user);
     assert.equal(
       (await call('query', { ...query, table: 'articles;drop table articles' }, cookie)).status,
@@ -72,6 +82,21 @@ test('local HTTP service enforces browser boundaries and RLS, runs ingestion, pu
         '<rss><channel><item><title>Local pipeline fixture aircraft</title><link>https://www.nasa.gov/local-test-fixture</link><pubDate>Thu, 08 Oct 2026 14:00:00 GMT</pubDate><description>Aircraft engineering description for an isolated local pipeline test.</description></item></channel></rss>',
       );
     };
+    const source = (await database.pg.query("select * from sources where name='NASA Aeronautics'"))
+      .rows[0];
+    const diagnostic = await (
+      await call('ingest', { action: 'check_source', source_id: source.id }, cookie)
+    ).json();
+    assert.equal(diagnostic.data.ok, true);
+    assert.equal(diagnostic.data.count, 1);
+    assert.deepEqual(
+      (await database.pg.query('select * from sources where id=$1', [source.id])).rows[0],
+      source,
+    );
+    assert.equal(
+      Number((await database.pg.query('select count(*) from articles')).rows[0].count),
+      0,
+    );
     const ingestion = await (await call('ingest', {}, cookie)).json();
     assert.equal(ingestion.error, null);
     assert.equal(ingestion.data.inserted, 1);

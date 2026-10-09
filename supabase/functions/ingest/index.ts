@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { XMLParser } from 'npm:fast-xml-parser@5.11.2';
 import { ingest } from '../_shared/pipeline.mjs';
+import { checkStoredSource } from '../_shared/source-check.mjs';
 
 const env = (key: string) => Deno.env.get(key) ?? '';
 const allowedOrigins = new Set(
@@ -56,6 +57,19 @@ Deno.serve(async (request) => {
   }
   if (!authorized) return json({ error: '需要管理员权限' }, 401);
   try {
+    const text = await request.text();
+    if (text.length > 65_536) return json({ error: '请求过大' }, 413);
+    const body = text ? JSON.parse(text) : {};
+    if (body.action === 'check_source')
+      return json(
+        await checkStoredSource({
+          db: adminDb,
+          parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
+          sourceId: body.source_id,
+          githubToken: env('GITHUB_TOKEN'),
+        }),
+      );
+    if (body.action) return json({ error: '不支持的操作' }, 400);
     const result = await ingest({
       db: adminDb,
       parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
