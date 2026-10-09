@@ -67,6 +67,8 @@ Deno.serve(async (request) => {
           parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
           sourceId: body.source_id,
           githubToken: env('GITHUB_TOKEN'),
+          youtubeKey: env('YOUTUBE_API_KEY'),
+          rsshubBase: env('RSSHUB_BASE_URL'),
         }),
       );
     if (body.action) return json({ error: '不支持的操作' }, 400);
@@ -77,6 +79,8 @@ Deno.serve(async (request) => {
         key: env('DEEPSEEK_API_KEY'),
         model: env('DEEPSEEK_MODEL') || 'deepseek-flash',
         githubToken: env('GITHUB_TOKEN'),
+        youtubeKey: env('YOUTUBE_API_KEY'),
+        rsshubBase: env('RSSHUB_BASE_URL'),
         batchSize: Number(env('INGEST_BATCH_SIZE')) || 12,
         monthlyLimit: Number(env('DEEPSEEK_MONTHLY_LIMIT_USD')) || 0,
         rates: {

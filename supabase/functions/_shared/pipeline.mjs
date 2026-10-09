@@ -53,7 +53,12 @@ export async function ingest({ db, parser, config }) {
             try {
               return {
                 source,
-                items: await fetchSource(source, { parser, githubToken: config.githubToken }),
+                items: await fetchSource(source, {
+                  parser,
+                  githubToken: config.githubToken,
+                  youtubeKey: config.youtubeKey,
+                  rsshubBase: config.rsshubBase,
+                }),
               };
             } catch (error) {
               return { source, error };

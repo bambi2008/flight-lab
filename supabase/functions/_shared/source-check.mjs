@@ -1,7 +1,15 @@
 import { fetchSource } from './sources.mjs';
 
 // Read-only diagnostics: never enqueue content or move the ingestion clock.
-export async function checkStoredSource({ db, parser, sourceId, githubToken, fetcher = fetch }) {
+export async function checkStoredSource({
+  db,
+  parser,
+  sourceId,
+  githubToken,
+  youtubeKey,
+  rsshubBase,
+  fetcher = fetch,
+}) {
   if (
     typeof sourceId !== 'string' ||
     !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(sourceId)
@@ -15,7 +23,17 @@ export async function checkStoredSource({ db, parser, sourceId, githubToken, fet
   if (error || !source) throw new Error('来源不存在或无法读取');
   const started = Date.now();
   try {
-    const items = await fetchSource(source, { parser, githubToken, fetcher });
+    let transport = '';
+    const items = await fetchSource(source, {
+      parser,
+      githubToken,
+      youtubeKey,
+      rsshubBase,
+      fetcher,
+      onTransport: (value) => {
+        transport = value;
+      },
+    });
     if (!items.length) throw new Error('未读到条目，可能是空订阅或返回格式异常');
     return {
       source_id: source.id,
@@ -24,7 +42,7 @@ export async function checkStoredSource({ db, parser, sourceId, githubToken, fet
       duration_ms: Date.now() - started,
       count: items.length,
       latest_title: items[0].original_title,
-      message: '连接正常',
+      message: transport || '连接正常',
     };
   } catch (error) {
     return {

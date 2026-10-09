@@ -34,7 +34,7 @@ export type Article = {
 export type Source = {
   id: string;
   name: string;
-  kind: 'youtube' | 'rss' | 'github' | 'manual';
+  kind: 'youtube' | 'bilibili' | 'rss' | 'github' | 'manual';
   locator: string;
   enabled: boolean;
   last_error: string | null;

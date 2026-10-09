@@ -21,6 +21,8 @@ async function config() {
     key: env.DEEPSEEK_API_KEY || '',
     model: env.DEEPSEEK_MODEL || 'deepseek-flash',
     githubToken: env.GITHUB_TOKEN,
+    youtubeKey: env.YOUTUBE_API_KEY,
+    rsshubBase: env.RSSHUB_BASE_URL,
     batchSize: Number(env.INGEST_BATCH_SIZE) || 12,
     monthlyLimit: Number(env.DEEPSEEK_MONTHLY_LIMIT_USD) || 0,
     rates: {
@@ -131,6 +133,8 @@ export function createLocalServer(database, loadConfig = config) {
               parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
               sourceId: body.source_id,
               githubToken: (await loadConfig()).githubToken,
+              youtubeKey: (await loadConfig()).youtubeKey,
+              rsshubBase: (await loadConfig()).rsshubBase,
             }),
             error: null,
           });

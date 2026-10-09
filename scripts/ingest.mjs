@@ -10,6 +10,8 @@ const config = {
   key: process.env.DEEPSEEK_API_KEY,
   model: process.env.DEEPSEEK_MODEL,
   githubToken: process.env.GITHUB_TOKEN,
+  youtubeKey: process.env.YOUTUBE_API_KEY,
+  rsshubBase: process.env.RSSHUB_BASE_URL,
   batchSize: Number(process.env.INGEST_BATCH_SIZE) || 12,
   monthlyLimit: Number(process.env.DEEPSEEK_MONTHLY_LIMIT_USD) || 0,
   rates: {

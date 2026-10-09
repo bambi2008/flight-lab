@@ -14,7 +14,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "ingest": "node --env-file-if-exists=.env.local scripts/ingest.mjs",
-    "source-check": "node scripts/source-check.mjs",
+    "source-check": "node --env-file-if-exists=.env.local scripts/source-check.mjs",
     "supabase": "supabase"
   },
   "dependencies": {

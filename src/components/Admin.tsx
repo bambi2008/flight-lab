@@ -333,7 +333,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
     setBusy(true);
     setError('');
     const { error: err } = await db.from('sources').insert({ ...sourceDraft, enabled: true });
-    if (err) setError('来源保存失败。请检查频道 ID、RSS 地址或 GitHub topic。');
+    if (err) setError('来源保存失败。请检查频道 ID、UP 主 UID、RSS 地址或 GitHub topic。');
     else {
       setShowSourceForm(false);
       setSourceDraft({ name: '', kind: 'youtube', locator: '' });
@@ -521,8 +521,9 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
       {tab === 'aircraft' ? null : tab === 'sources' ? (
         <div className="source-list">
           <div className="source-note">
-            YouTube 填频道 ID；RSS 支持 NASA、Airbus、Boeing、Lockheed Martin
-            和美国空军已验证的官方域名；GitHub 填 topic。哔哩哔哩视频通过“添加链接”收录。
+            YouTube 填频道 ID，配置 API Key 后优先走官方 API，异常时回退订阅；RSS 支持
+            NASA、Airbus、Boeing、Lockheed Martin、Joby 和美国空军已验证的官方域名；GitHub 填
+            topic。B站填 UP 主数字 UID，需要服务端配置 RSSHub，也可通过“添加链接”收录。
             <br />
             检查连接只读取来源，不生成摘要或发布内容，不影响下次采集。检查结果仅保留在当前页面。
           </div>
@@ -544,9 +545,11 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                     ? '10 分钟'
                     : s.kind === 'youtube'
                       ? '30 分钟'
-                      : s.kind === 'github'
-                        ? '6 小时'
-                        : '手动'}{' '}
+                      : s.kind === 'bilibili'
+                        ? '1 小时'
+                        : s.kind === 'github'
+                          ? '6 小时'
+                          : '手动'}{' '}
                   · 最近采集检查：
                   {s.last_fetched_at
                     ? new Date(s.last_fetched_at).toLocaleString('zh-CN')
@@ -566,7 +569,12 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                         ? `读取 ${sourceChecks[s.id].count} 条`
                         : sourceChecks[s.id].message}
                     </p>
-                    {sourceChecks[s.id].ok && <p>最新条目：{sourceChecks[s.id].latest_title}</p>}
+                    {sourceChecks[s.id].ok && (
+                      <>
+                        <p>{sourceChecks[s.id].message}</p>
+                        <p>最新条目：{sourceChecks[s.id].latest_title}</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -833,6 +841,7 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
                   onChange={(e) => setSourceDraft({ ...sourceDraft, kind: e.target.value })}
                 >
                   <option value="youtube">YouTube 频道</option>
+                  <option value="bilibili">B站 UP 主（RSSHub）</option>
                   <option value="rss">官方 RSS</option>
                   <option value="github">GitHub topic</option>
                 </select>
@@ -840,9 +849,11 @@ export default function Admin({ onUpdated }: { onUpdated: () => Promise<void> })
               <label>
                 {sourceDraft.kind === 'youtube'
                   ? '频道 ID（以 UC 开头）'
-                  : sourceDraft.kind === 'rss'
-                    ? '官方 RSS 地址'
-                    : 'Topic，例如 aerodynamics'}
+                  : sourceDraft.kind === 'bilibili'
+                    ? 'UP 主数字 UID（主页地址中的数字）'
+                    : sourceDraft.kind === 'rss'
+                      ? '官方 RSS 地址'
+                      : 'Topic，例如 aerodynamics'}
                 <input
                   required
                   value={sourceDraft.locator}

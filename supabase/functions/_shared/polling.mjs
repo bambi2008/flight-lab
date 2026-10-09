@@ -1,4 +1,5 @@
 export function pollIntervalMinutes(source) {
+  if (source.kind === 'bilibili') return 60;
   return source.kind === 'rss' ? 10 : source.kind === 'youtube' ? 30 : 360;
 }
 

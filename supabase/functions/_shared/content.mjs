@@ -23,6 +23,8 @@ export function canonicalUrl(value) {
 
 export function plainText(value, limit = 6000) {
   return String(value ?? '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<[^>]*>/g, ' ')

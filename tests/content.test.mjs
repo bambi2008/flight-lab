@@ -107,6 +107,7 @@ test('a single-item RSS feed parses and strips markup safely', async () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].raw_text, 'A test');
   assert.equal(plainText('<script>bad()</script><p>good</p>'), 'good');
+  assert.equal(plainText('&lt;script&gt;bad()&lt;/script&gt;&lt;p&gt;good&lt;/p&gt;'), 'good');
 });
 test('paid malformed model responses still log usage and remain failures', async () => {
   const logs = [];

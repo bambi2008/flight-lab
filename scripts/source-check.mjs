@@ -31,6 +31,11 @@ const sources = [
     locator:
       'https://www.af.mil/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=1&isdashboardselected=0&max=20',
   },
+  {
+    name: 'Joby',
+    kind: 'rss',
+    locator: 'https://ir.jobyaviation.com/news-events/press-releases/rss',
+  },
   { name: 'GitHub Aerodynamics', kind: 'github', locator: 'aerodynamics' },
 ];
 let failed = false;
@@ -38,6 +43,9 @@ for (const source of sources) {
   try {
     const items = await fetchSource(source, {
       parser: new XMLParser({ ignoreAttributes: false, processEntities: false }),
+      youtubeKey: process.env.YOUTUBE_API_KEY,
+      githubToken: process.env.GITHUB_TOKEN,
+      onTransport: (value) => console.log(`${source.name}: ${value}`),
     });
     if (!items.length) throw new Error('返回为空');
     console.log(`${source.name}: OK (${items.length} 条) — ${items[0].original_title}`);
